@@ -131,25 +131,27 @@ app.get('/invoices', async (req, res) => {
 });
 
 // 6. GET /cash-outflow (For the cash outflow chart)
+// 6. GET /cash-outflow (For the cash outflow chart)
 app.get('/cash-outflow', async (req, res) => {
   try {
+    // --- YEH HAI SQL FIX ---
+    // Hum 'GROUP BY' ko 'SELECT' se 100% match kar rahe hain
     const outflow = await prisma.$queryRaw`
       SELECT 
         due_date::date as date,
         SUM(amount) as amount_due
       FROM "Invoice"
       WHERE status != 'Paid'
-      GROUP BY date
+      GROUP BY due_date::date  -- YEH LINE FIX HO GAYI HAI
       ORDER BY date
       LIMIT 30;
     `;
     res.json(outflow);
   } catch (error) {
-    console.error('!!! ERROR IN /cash-outflow !!!', error);
+    console.error("!!! ERROR IN /cash-outflow !!!", error);
     res.status(500).json({ error: 'Failed to fetch cash outflow' });
   }
 });
-
 // 7. POST /chat-with-data (This one is for Phase 4)
 app.post('/chat-with-data', async (req, res) => {
   const { question } = req.body;
