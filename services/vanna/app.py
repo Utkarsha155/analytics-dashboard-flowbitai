@@ -2,7 +2,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from vanna.groq import Groq  # <-- Hum original import pe wapas aa gaye hain
+from vanna import VannaDefault
+ # <-- Hum original import pe wapas aa gaye hain
 from vanna.postgres import VannaPostgres
 from dotenv import load_dotenv
 
@@ -10,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- 1. Set up Vanna (Original Tareeka) ---
-vn = Groq(config={'api_key': os.environ.get('GROQ_API_KEY')})
+vn = VannaDefault(api_key=os.environ.get("GROQ_API_KEY"), model="groq")
 
 # We connect Vanna to our PostgreSQL database
 db_url = os.environ.get('DATABASE_URL')
