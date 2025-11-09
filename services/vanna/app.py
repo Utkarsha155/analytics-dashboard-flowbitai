@@ -2,14 +2,19 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from vanna import Vanna
 from dotenv import load_dotenv
+
+# --- NAYA FIX: SAHI IMPORTS ---
+from vanna.base import VannaBase # Base class
+from vanna.groq import GroqVanna  # Groq ka specific Vanna class
+from vanna.postgres import VannaPostgres # Connection
+# --- END NAYA FIX ---
 
 load_dotenv()
 
 # ✅ Initialize Vanna (Groq + Vanna latest version)
-vn = Vanna(
-    model="groq",
+# VannaBase aur GroqVanna ko mix karke naya object banate hain
+vn = GroqVanna(
     api_key=os.getenv("GROQ_API_KEY")
 )
 
@@ -51,4 +56,6 @@ def home():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
+    # Render passes PORT env
+    port = int(os.getenv("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
