@@ -2,8 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from vanna import VannaDefault
- # <-- Hum original import pe wapas aa gaye hain
+from vanna.groq import Groq  # <-- Hum original import pe wapas aa gaye hain
 from vanna.postgres import VannaPostgres
 from dotenv import load_dotenv
 
@@ -11,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- 1. Set up Vanna (Original Tareeka) ---
-vn = VannaDefault(api_key=os.environ.get("GROQ_API_KEY"), model="groq")
+vn = Groq(config={'api_key': os.environ.get('GROQ_API_KEY')})
 
 # We connect Vanna to our PostgreSQL database
 db_url = os.environ.get('DATABASE_URL')
@@ -25,6 +24,7 @@ vn.train(ddl="SELECT table_name, column_name, data_type FROM information_schema.
 print("Training complete.")
 
 # --- 3. Set up FastAPI Server (Same as before) ---
+# Hum FastAPI ko 0.0.0.0 host pe 10000 port pe chalayenge (Render ke liye zaroori)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -55,3 +55,10 @@ async def chat_with_data(request: ChatRequest):
 @app.get("/")
 def home():
     return {"message": "Vanna AI server is running."}
+
+# --- 5. Server Ko Chalane Ka Naya Tareeka ---
+if __name__ == "__main__":
+    import uvicorn
+    # Render humein PORT environment variable dega
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

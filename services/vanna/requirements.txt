@@ -1,6 +1,0 @@
-fastapi
-uvicorn
-vanna[groq]==0.7.0          # 2. Groq ka asli package (jo 'vanna[groq]' ko install karna tha)
-psycopg2-binary # 3. Postgres ka package
-python-dotenv
-gunicorn
