@@ -2,27 +2,28 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from vanna import VannaDefault
+from vanna import Vanna
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# ✅ Initialize Vanna + Groq
-vn = VannaDefault(
-    api_key=os.getenv("GROQ_API_KEY"),
-    model="groq"
+# ✅ Initialize Vanna (Groq + Vanna latest version)
+vn = Vanna(
+    model="groq",
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
-# ✅ Connect to Supabase Postgres directly
+# ✅ Connect PostgreSQL
 db_url = os.getenv("DATABASE_URL")
-if db_url:
-    vn.connect_to_postgres(connection_string=db_url)
+vanna_db_url = db_url.replace("postgresql://", "postgresql+psycopg2://")
+vn.connect_to_postgres(connection_string=vanna_db_url)
 
-# ✅ Train on schema
-print("Training Vanna...")
-vn.train("SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema='public';")
-print("Training done.")
+# ✅ Train schema
+print("Training...")
+vn.train(ddl="SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema='public';")
+print("Training complete.")
 
+# ✅ FastAPI
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -40,13 +41,13 @@ async def chat_with_data(request: ChatRequest):
     try:
         sql = vn.generate_sql(request.question)
         df = vn.run_sql(sql)
-        return {"sql": sql, "results_json": df.to_json(orient='records')}
+        return {"sql": sql, "results_json": df.to_json(orient="records")}
     except Exception as e:
         return {"error": str(e)}
 
 @app.get("/")
 def home():
-    return {"message": "Vanna AI server is running ✅"}
+    return {"message": "Vanna AI is running on Render!"}
 
 if __name__ == "__main__":
     import uvicorn
