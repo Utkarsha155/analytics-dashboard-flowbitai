@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+vanna[groq,postgres]
+psycopg2-binary
+python-dotenv
+gunicorn
