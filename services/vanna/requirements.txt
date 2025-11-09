@@ -1,8 +1,8 @@
 fastapi
 uvicorn
-vanna           # Base Vanna package
-vanna-groq      # Groq ke liye alag se
-vanna-postgres  # Postgres ke liye alag se
+vanna       # Base Vanna package
+vanna[groq]     # Groq "extra" package
+vanna[postgres] # Postgres "extra" package
 psycopg2-binary
 python-dotenv
 gunicorn
