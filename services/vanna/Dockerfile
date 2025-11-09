@@ -1,14 +1,17 @@
-# ✅ 1. Use stable Python
+# Use Python 3.11
 FROM python:3.11-slim
 
-# ✅ 2. Set work directory
+# Set work directory
 WORKDIR /app
 
-# ✅ 3. Copy all files (not just app.py)
+# Copy all files
 COPY . .
 
-# ✅ 4. Install required packages correctly
-RUN pip install --no-cache-dir fastapi uvicorn vanna[groq] psycopg2-binary python-dotenv
+# Install dependencies
+RUN pip install --no-cache-dir fastapi uvicorn[standard] vanna[groq] psycopg2-binary python-dotenv gunicorn
 
-# ✅ 5. Run using gunicorn + uvicorn worker (Production-safe)
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "app:app"]
+# Expose port (Render passes PORT env)
+EXPOSE 10000
+
+# Run app using gunicorn (fast + production ready)
+CMD ["gunicorn", "-w", "2", "-k", "uvicorn.workers.UvicornWorker", "app:app"]
