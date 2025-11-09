@@ -1,19 +1,26 @@
-// apps/api/src/index.ts
+import 'dotenv/config'; // Password loader
+
+// --- YEH HAI 'BigInt' FIX (Line 1) ---
+// Poore server ko batata hai ki BigInt ko string mein kaise badalna hai
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+// --- END 'BigInt' FIX ---
+
 import { PrismaClient } from '@prisma/client';
 import express from 'express';
 import cors from 'cors';
-import 'dotenv/config';
-console.log("Password Server Padh Raha Hai:", process.env.DATABASE_URL);
+
 // Initialize app & prisma client
 const app = express();
 const prisma = new PrismaClient();
 
 // --- Middlewares ---
-app.use(express.json()); // Allow express to read JSON bodies
-app.use(cors()); // Allow all cross-origin requests (for now)
+app.use(express.json());
+app.use(cors());
 
 // --- Routes ---
-// Simple "health check" route to see if it's working
+// Simple "health check" route
 app.get('/', (req, res) => {
   res.send('API is running!');
 });
@@ -26,47 +33,45 @@ app.get('/stats', async (req, res) => {
     const totalSpend = await prisma.invoice.aggregate({
       _sum: { amount: true },
     });
-
     const totalInvoices = await prisma.invoice.count();
-
     const avgInvoice = await prisma.invoice.aggregate({
       _avg: { amount: true },
     });
-
     res.json({
       totalSpend: totalSpend._sum.amount || 0,
       totalInvoices: totalInvoices || 0,
       avgInvoiceValue: avgInvoice._avg.amount || 0,
-      documentsUploaded: totalInvoices || 0, // Assuming 1 doc per invoice
+      documentsUploaded: totalInvoices || 0,
     });
   } catch (error) {
-console.error("!!! ERROR IN /stats !!!", error); // <-- ADD THIS LINE
-    res.status(500).json({ error: 'Failed to fetch stats' });  }
+    console.error('!!! ERROR IN /stats !!!', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
 });
 
 // 2. GET /invoice-trends (For the main line chart)
-// 2. GET /invoice-trends (For the main line chart)
 app.get('/invoice-trends', async (req, res) => {
   try {
-    // YEH SQL QUERY FIX KAR DI GAYI HAI
+    // --- YEH HAI SQL TYPO FIX ---
+    // GROUP BY clause ko SELECT clause se match kar diya hai
     const trends = await prisma.$queryRaw`
       SELECT 
         to_char(date, 'YYYY-MM') as month,
         SUM(amount) as total_spend,
         COUNT(id) as invoice_count
       FROM "Invoice"
-      GROUP BY to_char(date, 'YYYY-MM') -- FIX YAHAN THA (pehle "GROUP BY month" likha tha)
+      GROUP BY to_char(date, 'YYYY-MM') -- YEH LINE FIX HO GAYI HAI
       ORDER BY month;
     `;
     res.json(trends);
   } catch (error) {
-    // YAHAN ERROR LOGGING BHI ADD KAR DI HAI
-    console.error("!!! ERROR IN /invoice-trends !!!", error);
+    console.error('!!! ERROR IN /invoice-trends !!!', error);
     res.status(500).json({ error: 'Failed to fetch trends' });
   }
 });
 
 // 3. GET /vendors/top10 (For the vendor bar chart)
+// (Is route mein 'BigInt' fix (Step 1) se help milegi)
 app.get('/vendors/top10', async (req, res) => {
   try {
     const topVendors = await prisma.$queryRaw`
@@ -81,6 +86,7 @@ app.get('/vendors/top10', async (req, res) => {
     `;
     res.json(topVendors);
   } catch (error) {
+    console.error('!!! ERROR IN /vendors/top10 !!!', error);
     res.status(500).json({ error: 'Failed to fetch top vendors' });
   }
 });
@@ -96,9 +102,9 @@ app.get('/category-spend', async (req, res) => {
       GROUP BY category
       ORDER BY total_spend DESC;
     `;
-    
     res.json(accurateCategorySpend);
   } catch (error) {
+    console.error('!!! ERROR IN /category-spend !!!', error);
     res.status(500).json({ error: 'Failed to fetch category spend' });
   }
 });
@@ -106,8 +112,7 @@ app.get('/category-spend', async (req, res) => {
 // 5. GET /invoices (For the main table)
 app.get('/invoices', async (req, res) => {
   try {
-    const { search } = req.query; // Get the search query
-
+    const { search } = req.query;
     const invoices = await prisma.invoice.findMany({
       where: {
         OR: search ? [
@@ -115,15 +120,12 @@ app.get('/invoices', async (req, res) => {
           { vendor: { name: { contains: search as string, mode: 'insensitive' } } }
         ] : undefined,
       },
-      include: {
-        vendor: true,
-      },
-      orderBy: {
-        date: 'desc',
-      },
+      include: { vendor: true },
+      orderBy: { date: 'desc' },
     });
     res.json(invoices);
   } catch (error) {
+    console.error('!!! ERROR IN /invoices !!!', error);
     res.status(500).json({ error: 'Failed to fetch invoices' });
   }
 });
@@ -143,6 +145,7 @@ app.get('/cash-outflow', async (req, res) => {
     `;
     res.json(outflow);
   } catch (error) {
+    console.error('!!! ERROR IN /cash-outflow !!!', error);
     res.status(500).json({ error: 'Failed to fetch cash outflow' });
   }
 });
@@ -150,7 +153,6 @@ app.get('/cash-outflow', async (req, res) => {
 // 7. POST /chat-with-data (This one is for Phase 4)
 app.post('/chat-with-data', async (req, res) => {
   const { question } = req.body;
-  
   res.json({
     message: "AI endpoint is not connected yet.",
     sql: "SELECT 'todo'",
@@ -159,7 +161,9 @@ app.post('/chat-with-data', async (req, res) => {
 });
 
 // --- Start the Server ---
-const PORT = process.env.PORT || 8080; // We changed this to 8080
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
+  // Yeh console.log ab local pe nahi dikhega, sirf Render pe dikhega
+  // Humne password check wala log hata diya hai
   console.log(`Server is running on http://localhost:${PORT}`);
 });
