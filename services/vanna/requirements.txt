@@ -2,6 +2,6 @@ fastapi
 uvicorn
 vanna           # 1. Base Vanna package
 groq            # 2. Groq ka asli package (jo 'vanna[groq]' ko install karna tha)
-psycopg2-binary # 3. Postgres ka package (jo 'vanna[postgres]' ko karna tha)
+psycopg2-binary # 3. Postgres ka package
 python-dotenv
 gunicorn
