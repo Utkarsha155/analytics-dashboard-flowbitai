@@ -4,17 +4,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# --- NAYA FIX: SAHI IMPORTS ---
-from vanna.base import VannaBase # Base class
-from vanna.groq import GroqVanna  # Groq ka specific Vanna class
-from vanna.postgres import VannaPostgres # Connection
+# --- NAYA FIX: BYPASSING vanna.groq ---
+# Hum Vanna ka remote class use karenge (jo sabse stable hai)
+from vanna.remote import VannaAI
+from vanna.postgres import VannaPostgres
+
+# Humne 'groq' package alag se install kiya hai, isliye yeh kaam karega.
 # --- END NAYA FIX ---
 
 load_dotenv()
 
-# ✅ Initialize Vanna (Groq + Vanna latest version)
-# VannaBase aur GroqVanna ko mix karke naya object banate hain
-vn = GroqVanna(
+# ✅ Initialize Vanna (Naya Bypass Tareeka)
+# VannaAI base class use karo aur model ko 'groq' batao
+vn = VannaAI(
+    model="groq",
     api_key=os.getenv("GROQ_API_KEY")
 )
 
@@ -56,6 +59,4 @@ def home():
 
 if __name__ == "__main__":
     import uvicorn
-    # Render passes PORT env
-    port = int(os.getenv("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
