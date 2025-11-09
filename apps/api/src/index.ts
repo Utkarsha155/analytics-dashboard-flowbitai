@@ -45,19 +45,23 @@ console.error("!!! ERROR IN /stats !!!", error); // <-- ADD THIS LINE
 });
 
 // 2. GET /invoice-trends (For the main line chart)
+// 2. GET /invoice-trends (For the main line chart)
 app.get('/invoice-trends', async (req, res) => {
   try {
+    // YEH SQL QUERY FIX KAR DI GAYI HAI
     const trends = await prisma.$queryRaw`
       SELECT 
         to_char(date, 'YYYY-MM') as month,
         SUM(amount) as total_spend,
         COUNT(id) as invoice_count
       FROM "Invoice"
-      GROUP BY month
+      GROUP BY to_char(date, 'YYYY-MM') -- FIX YAHAN THA (pehle "GROUP BY month" likha tha)
       ORDER BY month;
     `;
     res.json(trends);
   } catch (error) {
+    // YAHAN ERROR LOGGING BHI ADD KAR DI HAI
+    console.error("!!! ERROR IN /invoice-trends !!!", error);
     res.status(500).json({ error: 'Failed to fetch trends' });
   }
 });
