@@ -5,12 +5,10 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 3. .env file ko chhodkar, baaki sab copy karo
-# (Hum .env ko Render ke Environment Variables se daalenge)
 COPY app.py .
 
-# 4. Saare packages install karo
-# (Yeh `vanna[groq,postgres]` wala shortcut yahan 100% chalega)
-RUN pip install "vanna[groq,postgres]" fastapi uvicorn python-dotenv
+# 4. Saare packages alag-alag install karo (extras ke bina)
+RUN pip install vanna groq psycopg2-binary fastapi uvicorn python-dotenv
 
 # 5. Render ko batao ki server kaise start karna hai
 CMD ["python", "app.py"]
