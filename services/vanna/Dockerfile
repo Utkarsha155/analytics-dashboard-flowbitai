@@ -1,14 +1,14 @@
-# 1. Python ka ek stable version (3.11) use karo
+# ✅ 1. Use stable Python
 FROM python:3.11-slim
 
-# 2. Server ke andar ek 'app' folder banao
+# ✅ 2. Set work directory
 WORKDIR /app
 
-# 3. .env file ko chhodkar, baaki sab copy karo
-COPY app.py .
+# ✅ 3. Copy all files (not just app.py)
+COPY . .
 
-# 4. Saare packages alag-alag install karo (extras ke bina)
-RUN pip install vanna groq psycopg2-binary fastapi uvicorn python-dotenv
+# ✅ 4. Install required packages correctly
+RUN pip install --no-cache-dir fastapi uvicorn vanna[groq] psycopg2-binary python-dotenv
 
-# 5. Render ko batao ki server kaise start karna hai
-CMD ["python", "app.py"]
+# ✅ 5. Run using gunicorn + uvicorn worker (Production-safe)
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "app:app"]
