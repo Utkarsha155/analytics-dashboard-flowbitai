@@ -1,0 +1,76 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Reads from your .env file
+}
+
+// --- TABLES ---
+
+model Vendor {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  invoices Invoice[] // A Vendor can have many Invoices
+}
+
+model Customer {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  email    String?
+  address  String?
+  invoices Invoice[] // A Customer can have many Invoices
+}
+
+model Invoice {
+  id             String     @id @default(cuid())
+  invoice_number String     @unique
+  date           DateTime
+  due_date       DateTime
+  amount         Decimal    // Use Decimal for money
+  status         String     // e.g., "Paid", "Pending", "Overdue"
+
+  // Relations
+  vendorId       String
+  vendor         Vendor     @relation(fields: [vendorId], references: [id])
+
+  customerId     String
+  customer       Customer   @relation(fields: [customerId], references: [id])
+
+  lineItems      LineItem[] // An Invoice has many LineItems
+  payments       Payment[]  // An Invoice has many Payments
+
+  @@index([vendorId])
+  @@index([customerId])
+}
+
+model LineItem {
+  id          String  @id @default(cuid())
+  description String
+  quantity    Int
+  price       Decimal
+  category    String  // We will invent this in the seed script
+
+  // Relation
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id      String   @id @default(cuid())
+  date    DateTime
+  amount  Decimal
+  method  String   // e.g., "Credit Card", "Bank Transfer"
+
+  // Relation
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}

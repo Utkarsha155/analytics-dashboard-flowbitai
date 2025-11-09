@@ -1,0 +1,16 @@
+# Dependencies (kahin bhi ho)
+node_modules/
+
+# Build Output (kahin bhi ho)
+dist/
+
+# Secrets (aapka specific path)
+apps/api/.env
+
+# Extra safety
+.env
+*.env
+
+# OS files
+.DS_Store
+.vscode/
