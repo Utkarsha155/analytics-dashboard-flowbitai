@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
-
+console.log("Password Server Padh Raha Hai:", process.env.DATABASE_URL);
 // Initialize app & prisma client
 const app = express();
 const prisma = new PrismaClient();
@@ -40,8 +40,8 @@ app.get('/stats', async (req, res) => {
       documentsUploaded: totalInvoices || 0, // Assuming 1 doc per invoice
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch stats' });
-  }
+console.error("!!! ERROR IN /stats !!!", error); // <-- ADD THIS LINE
+    res.status(500).json({ error: 'Failed to fetch stats' });  }
 });
 
 // 2. GET /invoice-trends (For the main line chart)

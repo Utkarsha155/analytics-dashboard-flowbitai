@@ -4,12 +4,11 @@
   "description": "",
   "main": "index.js",
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
-  },
+"seed": "dotenv -e .env -- ts-node prisma/seed.ts"},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:push": "npx prisma db push",
-    "build": "tsc",
+    "db:push": "dotenv -e .env -- npx prisma db push",
+    "build": "npx prisma generate && tsc",
     "start": "node dist/src/index.js",
     "dev": "npm run build && npm run start"
   },

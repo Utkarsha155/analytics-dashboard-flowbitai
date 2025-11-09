@@ -2,7 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
+// Prisma variable ko yahan DECLARE karo
+let prisma: PrismaClient;
 
 function getCategory(description: string) {
   if (!description) return 'General';
@@ -15,12 +16,18 @@ function getCategory(description: string) {
 }
 
 async function main() {
-  console.log('Start seeding with FINAL (lineItems fix) script...');
+  // Prisma variable ko yahan INITIALIZE karo
+  prisma = new PrismaClient();
+  
+  console.log('Start seeding with FINAL (path fix) script...');
 
+  // --- YEH HAI SAHI PATH ---
+  // Yeh 'prisma' folder se 3 level upar jaakar 'data' folder ko dhoondega
   const dataPath = path.join(__dirname, '../../../data/Analytics_Test_Data.json');
   
   if (!fs.existsSync(dataPath)) {
-    throw new Error(`FATAL: Data file not found at ${dataPath}`);
+    console.error('Data file not found at path:', dataPath);
+    throw new Error(`FATAL: Data file not found.`);
   }
   
   const fileContent = fs.readFileSync(dataPath, 'utf-8');
@@ -43,11 +50,8 @@ async function main() {
 
   for (const doc of allDocuments) {
     const data = doc.extractedData?.llmData;
-
-    // --- THIS IS THE FIX (added .value at the end) ---
     const lineItemsArray = data?.lineItems?.value?.items?.value;
 
-    // --- UPDATED CHECK ---
     if (!data || !data.vendor || !data.customer || !data.invoice || !data.summary || !lineItemsArray) {
       console.warn(`Skipping document (missing 'llmData' or 'lineItems'): ${doc._id}`);
       skippedCount++;
@@ -95,7 +99,6 @@ async function main() {
           vendorId: vendor.id,
           customerId: customer.id,
           lineItems: {
-            // Now lineItemsArray is the correct array
             create: lineItemsArray.map((item: any) => ({
               description: item.description?.value || 'N/A',
               quantity: item.quantity?.value || 1,
@@ -126,9 +129,13 @@ async function main() {
 main()
   .catch(async (e) => {
     console.error(e);
-    await prisma.$disconnect();
+    if (prisma) {
+      await prisma.$disconnect();
+    }
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    if (prisma) {
+      await prisma.$disconnect();
+    }
   });
