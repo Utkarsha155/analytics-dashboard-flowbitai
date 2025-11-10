@@ -1,6 +1,4 @@
 import 'dotenv/config'; // Password loader
-import { Groq } from 'groq';
-// --- YEH HAI 'BigInt' FIX (Line 1) ---
 // Poore server ko batata hai ki BigInt ko string mein kaise badalna hai
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
@@ -15,6 +13,9 @@ import cors from 'cors';
 const app = express();
 const prisma = new PrismaClient();
 
+const Groq = require('groq');
+// We use 'as any' to bypass the TypeScript misinterpretation of the constructor
+// Initialize Groq client
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
@@ -158,11 +159,14 @@ app.get('/cash-outflow', async (req, res) => {
 });
 // 7. POST /chat-with-data (This one is for Phase 4)
 // Endpoint 7. POST /chat-with-data (Final Working Version)
+// Endpoint 7. POST /chat-with-data (Final Working Version)
 app.post('/chat-with-data', async (req, res) => {
+  // NOTE: Groq key is loaded via .env, client is initialized globally
   const { question } = req.body;
 
   try {
     // --- 1. Schema aur Question ko Groq ke paas bhejo ---
+    // Hum database ka schema nikal kar LLM ko de rahe hain
     const schema = await prisma.$queryRaw`
       SELECT 
         table_name, column_name, data_type 
@@ -171,7 +175,7 @@ app.post('/chat-with-data', async (req, res) => {
       ORDER BY table_name, ordinal_position;
     `;
 
-    const prompt = `You are a helpful SQL assistant. Your task is to generate a PostgreSQL query based on the user's question. The database schema is provided below. Only return the SQL query, nothing else.
+    const prompt = `You are a helpful PostgreSQL SQL assistant. Your task is to generate a PostgreSQL query based on the user's question. The database schema is provided below. Only return the SQL query, nothing else.
 
     SCHEMA: ${JSON.stringify(schema)}
 
@@ -185,7 +189,7 @@ app.post('/chat-with-data', async (req, res) => {
     });
 
     const rawSql = chatCompletion.choices[0].message.content.trim();
-    // Remove markdown and semicolon
+    // Remove markdown and semicolon for safe execution
     const sqlQuery = rawSql.replace(/```sql|```|;/g, '').trim();
 
     // --- 3. Generated SQL query ko database pe run karo ---
@@ -199,10 +203,9 @@ app.post('/chat-with-data', async (req, res) => {
 
   } catch (error) {
     console.error('!!! ERROR IN /chat-with-data !!!', error);
-    res.status(500).json({ error: `AI Processing Failed. Please check the question format.` });
+    res.status(500).json({ error: `AI Processing Failed. Please check the question format or backend logs.` });
   }
 });
-
 // --- Start the Server ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
