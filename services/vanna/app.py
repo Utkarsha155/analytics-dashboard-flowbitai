@@ -4,34 +4,37 @@ from vanna.integrations.postgres import PostgresSqlRunner
 from vanna.servers.fastapi import VannaFastAPIServer
 from vanna import Agent
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-DATABASE_URL = os.environ.get("DATABASE_URL")
-VERCEL_FRONTEND_URL = os.environ.get("VERCEL_FRONTEND_URL", "http://localhost:3000") 
+# Environment variables
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+DATABASE_URL = os.getenv("DATABASE_URL")
+VERCEL_FRONTEND_URL = os.getenv("VERCEL_FRONTEND_URL", "*")
 
-
+# LLM service
 llm_service = GroqLlmService(
     api_key=GROQ_API_KEY,
-    model="mixtral-8x7b-32768" 
+    model="mixtral-8x7b-32768"
 )
 
-sql_runner = PostgresSqlRunner(
-    connection_string=DATABASE_URL
-)
+# Database connector
+sql_runner = PostgresSqlRunner(connection_string=DATABASE_URL)
 
-agent = Agent(
-    llm_service=llm_service,
-    sql_runner=sql_runner
-)
+# Agent connects LLM and SQL
+agent = Agent(llm_service=llm_service, sql_runner=sql_runner)
 
+# FastAPI + CORS config
 config = {
     "cors": {
         "enabled": True,
-        "allow_origins": [VERCEL_FRONTEND_URL], 
+        "allow_origins": [VERCEL_FRONTEND_URL],
         "allow_credentials": True,
-        "allow_methods": ["GET", "POST"]
+        "allow_methods": ["GET", "POST"],
+        "allow_headers": ["*"],
     }
 }
 
 server = VannaFastAPIServer(agent, config=config)
 app = server.create_app()
 
+@app.get("/")
+def home():
+    return {"status": "Backend running fine! Waiting for frontend 🚀"}
