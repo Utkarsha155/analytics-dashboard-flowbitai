@@ -1,4 +1,4 @@
-"use client"; // This component fetches its own data
+"use client"; 
 
 import {
   Card,
@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/table";
 import useSWR from "swr";
 
-// This is the fetcher function we created before
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
@@ -28,7 +27,6 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-// Define the type for a single invoice from our API
 type Invoice = {
   id: string;
   invoice_number: string;
@@ -40,15 +38,13 @@ type Invoice = {
   };
 };
 
-// Helper to format currency
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(Number(value)); // Ensure value is a number
+  }).format(Number(value)); 
 };
 
-// Helper to format dates
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString();
 };
@@ -66,7 +62,6 @@ export function InvoiceTable() {
     <Card>
       <CardHeader>
         <CardTitle>Invoices</CardTitle>
-        {/* We can add a search bar here later */}
       </CardHeader>
       <CardContent>
         <Table>

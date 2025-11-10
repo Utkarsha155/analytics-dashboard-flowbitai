@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Logo component (bottom)
 function FlowbitLogo() {
   return (
     <div className="flex items-center gap-2">
@@ -41,9 +40,7 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-20 flex h-full w-60 flex-col border-r bg-white shadow-sm">
-      {/* --- TOP SECTION (This part is updated) --- */}
       <div className="flex items-center gap-3 px-5 py-4 border-b">
-        {/* Your new "B" logo */}
         <img
           src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrrNSEOfP6-8ebNg-djnorO8LYdltG-8XgTg&s"
           alt="Buchhaltung Logo"
@@ -54,9 +51,7 @@ export function Sidebar() {
           <span className="text-xs text-gray-500">12 members</span>
         </div>
       </div>
-      {/* --- END UPDATE --- */}
-
-      {/* Navigation Section */}
+      
       <nav className="flex flex-col px-4 py-6 space-y-1 text-sm font-medium">
         <span className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">
           General
@@ -86,7 +81,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom Section: Flowbit AI Logo */}
       <div className="mt-auto border-t px-5 py-4">
         <FlowbitLogo />
       </div>

@@ -17,7 +17,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      {/* We use bg-muted/40 (light gray) as the main page background */}
       <body
         className={cn(
           "min-h-screen bg-muted/40 font-sans antialiased",

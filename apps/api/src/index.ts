@@ -4,7 +4,7 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import Groq from 'groq-sdk';
 
-// --- Fix BigInt serialization for JSON ---
+
 declare global {
   interface BigInt {
     toJSON: () => string;
@@ -14,7 +14,7 @@ declare global {
   return this.toString();
 };
 
-// --- Initialize ---
+
 const prisma = new PrismaClient();
 const app = express();
 
@@ -27,9 +27,7 @@ const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 app.use(cors());
 app.use(express.json());
 
-// ======================================================
-// 🧾 /invoices — Fetch all invoices
-// ======================================================
+
 app.get('/invoices', async (req, res) => {
   try {
     const invoices = await prisma.invoice.findMany({
@@ -48,9 +46,7 @@ app.get('/invoices', async (req, res) => {
   }
 });
 
-// ======================================================
-// 📊 /stats — Overview Cards
-// ======================================================
+
 app.get('/stats', async (req, res) => {
   try {
     const totalSpend = await prisma.invoice.aggregate({ _sum: { amount: true } });
@@ -69,9 +65,7 @@ app.get('/stats', async (req, res) => {
   }
 });
 
-// ======================================================
-// 📈 /invoice-trends — Line Chart
-// ======================================================
+
 app.get('/invoice-trends', async (req, res) => {
   try {
     const trends = await prisma.$queryRawUnsafe(`
@@ -90,9 +84,7 @@ app.get('/invoice-trends', async (req, res) => {
   }
 });
 
-// ======================================================
-// 🏆 /vendors/top10 — Bar Chart
-// ======================================================
+
 app.get('/vendors/top10', async (req, res) => {
   try {
     const topVendors = await prisma.$queryRawUnsafe(`
@@ -112,9 +104,7 @@ app.get('/vendors/top10', async (req, res) => {
   }
 });
 
-// ======================================================
-// 🥧 /category-spend — Pie Chart
-// ======================================================
+
 app.get('/category-spend', async (req, res) => {
   try {
     const categorySpend = await prisma.$queryRawUnsafe(`
@@ -132,9 +122,7 @@ app.get('/category-spend', async (req, res) => {
   }
 });
 
-// ======================================================
-// 💸 /cash-outflow — Bar Chart
-// ======================================================
+
 app.get('/cash-outflow', async (req, res) => {
   try {
     const outflow = await prisma.$queryRawUnsafe(`
@@ -154,17 +142,11 @@ app.get('/cash-outflow', async (req, res) => {
   }
 });
 
-// ======================================================
-// 🤖 /chat-with-data — AI SQL Assistant
-// ======================================================
-// ======================================================
-// 🤖 /chat-with-data — AI SQL Assistant (Fixed & Stable)
-// ======================================================
+
 app.post('/chat-with-data', async (req, res) => {
   const { question } = req.body;
 
   try {
-    // 1️⃣ Fetch schema dynamically from DB
     const schema = await prisma.$queryRawUnsafe(`
       SELECT table_name, column_name, data_type 
       FROM information_schema.columns 
@@ -172,7 +154,6 @@ app.post('/chat-with-data', async (req, res) => {
       ORDER BY table_name, ordinal_position;
     `);
 
-    // 2️⃣ Create detailed AI prompt
     const prompt = `
 You are an expert PostgreSQL SQL assistant.
 Generate a valid SQL query for the question below using this schema.
@@ -189,7 +170,6 @@ QUESTION:
 ${question}
 `;
 
-    // 3️⃣ Ask Groq model (updated model)
     const chatCompletion = await groq.chat.completions.create({
       model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
       messages: [{ role: "user", content: prompt }],
@@ -198,14 +178,12 @@ ${question}
 
     let rawSql = chatCompletion.choices?.[0]?.message?.content?.trim() || "";
 
-    // 4️⃣ Clean up SQL output
     let sqlQuery = rawSql
       .replace(/```sql|```/gi, "")
       .replace(/;$/, "")
       .replace(/\s+/g, " ")
       .trim();
 
-    // 5️⃣ Patch for common column issues
     sqlQuery = sqlQuery
       .replace(/invoiceid/gi, '"invoiceId"')
       .replace(/customerid/gi, '"customerId"')
@@ -217,10 +195,8 @@ ${question}
 
     console.log("🧠 Final SQL before execution:", sqlQuery);
 
-    // 6️⃣ Execute SQL safely
     const results = await prisma.$queryRawUnsafe(sqlQuery);
 
-    // 7️⃣ Generate short explanation
     let explanation = "";
     try {
       const explainPrompt = `
@@ -241,7 +217,6 @@ Results (first few): ${JSON.stringify(results).slice(0, 400)}
       console.error("⚠️ Explanation generation failed:", expErr);
     }
 
-    // ✅ Return all
     res.json({
       sql: sqlQuery,
       results_json: JSON.stringify(results, null, 2),
@@ -256,9 +231,6 @@ Results (first few): ${JSON.stringify(results).slice(0, 400)}
   }
 });
 
-// ======================================================
-// 🚀 Start Server
-// ======================================================
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`✅ Server is running on port ${PORT}`);

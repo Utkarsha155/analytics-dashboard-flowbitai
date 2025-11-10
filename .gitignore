@@ -1,10 +1,10 @@
-# Dependencies (kahin bhi ho)
+# Dependencies 
 node_modules/
 
-# Build Output (kahin bhi ho)
+# Build Output 
 dist/
 
-# Secrets (aapka specific path)
+# Secrets 
 apps/api/.env
 
 # Extra safety

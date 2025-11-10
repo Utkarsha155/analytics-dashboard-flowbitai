@@ -2,7 +2,6 @@ import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Prisma variable ko yahan DECLARE karo
 let prisma: PrismaClient;
 
 function getCategory(description: string) {
@@ -16,13 +15,11 @@ function getCategory(description: string) {
 }
 
 async function main() {
-  // Prisma variable ko yahan INITIALIZE karo
   prisma = new PrismaClient();
   
   console.log('Start seeding with FINAL (path fix) script...');
 
-  // --- YEH HAI SAHI PATH ---
-  // Yeh 'prisma' folder se 3 level upar jaakar 'data' folder ko dhoondega
+
   const dataPath = path.join(__dirname, '../../../data/Analytics_Test_Data.json');
   
   if (!fs.existsSync(dataPath)) {

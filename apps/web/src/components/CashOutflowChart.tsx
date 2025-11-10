@@ -3,7 +3,7 @@
 import {
   Card,
   CardContent,
-  CardDescription, // Subtitle ke liye
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -15,10 +15,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-} from "recharts"; // <-- Ab sahi hai
+} from "recharts";
 import useSWR from "swr";
 
-// --- Fetcher (Jo errors ko handle karta hai) ---
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
@@ -30,13 +29,11 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-// API se data ka type
 type ApiOutflowData = {
   date: string;
   amount_due: string;
 };
 
-// --- Currency Formatter (Figma jaisa) ---
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
@@ -44,25 +41,21 @@ const formatCurrency = (value: number) => {
   }).format(Number(value));
 };
 
-// --- Y-Axis Formatter (€0k, €15k...) ---
 const formatAxis = (value: number) => {
   if (value === 0) return "€0k";
   return `€${value / 1000}k`;
 };
 
-// --- Custom Tooltip (Screenshot jaisa popup) ---
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border bg-white p-3 shadow-sm">
-        {/* Label (Date Range) */}
         <p className="text-sm font-semibold text-gray-800">{label}</p>
-        {/* Data */}
         <div className="mt-1 flex items-center justify-between">
           <span className="text-xs text-gray-500">Amount Due:</span>
           <span
             className="text-xs font-bold ml-4"
-            style={{ color: "hsl(var(--primary))" }} // Dark Purple
+            style={{ color: "hsl(var(--primary))" }}
           >
             {formatCurrency(payload[0].value)}
           </span>
@@ -73,7 +66,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-// --- Data Grouping Function (API data ko ranges mein daalne ke liye) ---
 const groupDataIntoRanges = (data: ApiOutflowData[]) => {
   const buckets = {
     "0 - 7 days": 0,
@@ -83,7 +75,6 @@ const groupDataIntoRanges = (data: ApiOutflowData[]) => {
   };
 
   const today = new Date();
-  // Din ka difference nikalne ke liye helper
   const daysDiff = (date1: Date, date2: Date) => {
     const diffTime = Math.abs(date2.getTime() - date1.getTime());
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -105,7 +96,6 @@ const groupDataIntoRanges = (data: ApiOutflowData[]) => {
     }
   });
 
-  // Object ko array mein convert karo (chart ke liye)
   return [
     { name: "0 - 7 days", AmountDue: buckets["0 - 7 days"] },
     { name: "8-30 days", AmountDue: buckets["8-30 days"] },
@@ -123,9 +113,7 @@ export function CashOutflowChart() {
   if (error) return <div>Failed to load chart</div>;
   if (!data) return <div>Loading...</div>;
 
-  // Data ko ranges mein group karo
   const chartData = groupDataIntoRanges(data);
-  // Y-axis ka max value (e.g., 45k)
   const maxAmount = Math.max(...chartData.map((d) => d.AmountDue));
   const domainMax = Math.ceil(maxAmount / 15000) * 15000;
 
@@ -133,7 +121,6 @@ export function CashOutflowChart() {
     <Card className="bg-white shadow-sm border border-gray-200 rounded-lg">
       <CardHeader>
         <CardTitle>Cash Outflow Forecast</CardTitle>
-        {/* Subtitle add kiya */}
         <CardDescription>
           Expected payment obligations grouped by due date ranges.
         </CardDescription>
@@ -144,14 +131,12 @@ export function CashOutflowChart() {
             data={chartData}
             margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
           >
-            {/* Background grid (Figma jaisi horizontal lines) */}
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="#e5e7eb"
-              vertical={false} // Sirf horizontal lines
+              vertical={false}
             />
 
-            {/* X-Axis (Neeche "0 - 7 days"...) */}
             <XAxis
               dataKey="name"
               axisLine={false}
@@ -160,39 +145,32 @@ export function CashOutflowChart() {
               stroke="#6b7280"
             />
 
-            {/* Y-Axis (Left mein €0k, €15k...) */}
             <YAxis
               axisLine={false}
               tickLine={false}
               fontSize={12}
               stroke="#6b7280"
-              tickFormatter={formatAxis} // Formatter use karo
+              tickFormatter={formatAxis}
               domain={[0, domainMax]}
               ticks={[0, 15000, 30000, 45000]}
             />
 
-            {/* Custom Tooltip */}
             <Tooltip
               content={<CustomTooltip />}
               cursor={{ fill: "hsl(var(--primary) / 0.1)" }}
             />
 
-            {/* --- YEH HAI MAIN FIX (Dark Purple + Light Purple) --- */}
             <Bar
-  dataKey="AmountDue"
-  name="Amount Due"
-  radius={[4, 4, 0, 0]}
-  fill="hsl(var(--primary))"
-  barSize={40}
-  // --- YEH HAI FIX ---
-  // Background ko ek prop ki tarah add karo
-  background={{
-    fill: "hsl(var(--primary) / 0.1)",
-    radius: 4,
-  }}
-  // --- END FIX ---
-/>
-            {/* Legend ko hata diya */}
+              dataKey="AmountDue"
+              name="Amount Due"
+              radius={[4, 4, 0, 0]}
+              fill="hsl(var(--primary))"
+              barSize={40}
+              background={{
+                fill: "hsl(var(--primary) / 0.1)",
+                radius: 4,
+              }}
+            />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

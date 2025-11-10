@@ -3,7 +3,7 @@
 import {
   Card,
   CardContent,
-  CardDescription, // Subtitle ke liye
+  CardDescription, 
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -14,12 +14,11 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  CartesianGrid, // Background grid ke liye
-  Cell, // <-- FIX 1: Import Cell (Capital 'C')
+  CartesianGrid, 
+  Cell, 
 } from "recharts";
 import useSWR from "swr";
 
-// --- Fetcher (Jo errors ko handle karta hai) ---
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
@@ -31,13 +30,11 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-// API se data ka type
 type VendorData = {
   name: string;
   total_spend: number;
 };
 
-// --- Currency Formatter (Figma jaisa) ---
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
@@ -45,25 +42,21 @@ const formatCurrency = (value: number) => {
   }).format(Number(value));
 };
 
-// --- X-Axis Formatter (€0k, €15k...) ---
 const formatAxis = (value: number) => {
   if (value === 0) return "€0k";
   return `€${value / 1000}k`;
 };
 
-// --- Custom Tooltip (Screenshot jaisa popup) ---
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border bg-white p-3 shadow-sm">
-        {/* Label (Vendor Name) */}
         <p className="text-sm font-semibold text-gray-800">{label}</p>
-        {/* Data */}
         <div className="mt-1 flex items-center justify-between">
           <span className="text-xs text-gray-500">Vendor Spend:</span>
           <span
             className="text-xs font-bold ml-4"
-            style={{ color: "hsl(var(--primary))" }} // Dark Purple
+            style={{ color: "hsl(var(--primary))" }} 
           >
             {formatCurrency(payload[0].value)}
           </span>
@@ -83,8 +76,6 @@ export function VendorSpendChart() {
   if (error) return <div>Failed to load chart</div>;
   if (!data) return <div>Loading...</div>;
 
-  // Data ko ready karna (Number convert karna)
-  // Aur list ko reverse karna taaki top vendor (AcmeCorp) sabse upar dikhe
   const chartData = data
     .map((item) => ({
       ...item,
@@ -92,10 +83,8 @@ export function VendorSpendChart() {
     }))
     .reverse();
 
-  // X-axis ka max value (e.g., 45k)
   const maxSpend = Math.max(...chartData.map((d) => d.total_spend));
-  const domainMax = Math.ceil(maxSpend / 15000) * 15000; // 15k ke multiple mein round up
-
+  const domainMax = Math.ceil(maxSpend / 15000) * 15000; 
   return (
     <Card className="bg-white shadow-sm border border-gray-200 rounded-lg">
       <CardHeader>
@@ -148,21 +137,18 @@ export function VendorSpendChart() {
               name="Total Spend"
               radius={[4, 4, 0, 0]}
               barSize={12}
-              // --- FIX 2: Background ko yahan set karo ---
               background={{
-                fill: "hsl(var(--primary) / 0.1)", // 10% Purple
+                fill: "hsl(var(--primary) / 0.1)", 
                 radius: 4,
               }}
             >
-              {/* --- FIX 3: <cell> ko <Cell> (Capital C) karo --- */}
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={
-                    // Figma jaisa effect: "OmegaLtd" ko dark purple, baaki ko light purple
                     entry.name === "OmegaLtd"
-                      ? "hsl(var(--primary))" // Dark Purple
-                      : "hsl(var(--chart-subtle))" // Lighter Purple (from globals.css)
+                      ? "hsl(var(--primary))" 
+                      : "hsl(var(--chart-subtle))" 
                   }
                 />
               ))}

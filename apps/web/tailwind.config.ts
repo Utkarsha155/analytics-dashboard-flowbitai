@@ -1,8 +1,8 @@
 import type { Config } from "tailwindcss"
 import animate from "tailwindcss-animate" 
 
-const config: Config = { // v3 mein 'satisfies Config' nahi, 'Config' type use hota hai
-  darkMode: ["class"],  // v3 waala syntax
+const config: Config = { 
+  darkMode: ["class"],  
   content: [
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',

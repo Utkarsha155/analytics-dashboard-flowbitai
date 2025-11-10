@@ -4,12 +4,11 @@
 
 @layer base {
   :root {
-  /* --- Figma Colors (EVEN DARKER Purple Theme) --- */
-  --background: 0 0% 100%; /* White */
-  --foreground: 222.2 47.4% 11.2%; /* Dark Text */
+  --background: 0 0% 100%; 
+  --foreground: 222.2 47.4% 11.2%; 
 
-  --muted: 210 40% 96.1%; /* Light Gray background */
-  --muted-foreground: 215.4 16.3% 46.9%; /* Muted Text */
+  --muted: 210 40% 96.1%; 
+  --muted-foreground: 215.4 16.3% 46.9%; 
 
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 47.4% 11.2%;
@@ -20,10 +19,8 @@
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
 
-  /* --- YEH LINES CHANGE HO GAYI HAIN (Even Darker Purple) --- */
-  --primary: 250 65% 30%; /* Even Darker Purple */
-  --primary-foreground: 210 40% 98%; /* White text */
-  /* --- END CHANGE --- */
+  --primary: 250 65% 30%; 
+  --primary-foreground: 210 40% 98%; 
 
   --secondary: 210 40% 96.1%;
   --secondary-foreground: 222.2 47.4% 11.2%;
@@ -36,25 +33,21 @@
 
   --radius: 0.5rem;
 
-  /* --- Chart Colors (Even Darker Purple Theme) --- */
-  --chart-1: 250 65% 30%; /* Even Darker Purple */
-  --chart-2: 25.9 95.3% 54.9%; /* Orange */
-  --chart-3: 197.8 92.1% 48.4%; /* Light Blue */
+  --chart-1: 250 65% 30%; 
+  --chart-2: 25.9 95.3% 54.9%; 
+  --chart-3: 197.8 92.1% 48.4%; 
   --chart-4: 346.8 77.2% 49.8%;
   --chart-5: 142.1 76.2% 36.3%;
 
   
-  /* ... (baaki saare colors) ... */
   --chart-5: 142.1 76.2% 36.3%;
-  --chart-subtle: 250 65% 70%; /* Lighter Purple */
+  --chart-subtle: 250 65% 70%; 
 
 }
 
   .dark {
-    /* Dark mode colors (not in screenshot, but good to have) */
     --background: 224 71% 4%;
     --foreground: 213 31% 91%;
-    /* ... (rest of dark mode) ... */
   }
 }
 

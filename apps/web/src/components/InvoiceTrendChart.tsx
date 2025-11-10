@@ -19,7 +19,6 @@ import {
 } from "recharts";
 import useSWR from "swr";
 
-// --- Fetcher (Jo errors ko handle karta hai) ---
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
@@ -31,14 +30,12 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-// API se data ka type
 type TrendData = {
   month: string;
   total_spend: number;
   invoice_count: number;
 };
 
-// --- Currency Formatter (Figma jaisa) ---
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
@@ -46,7 +43,6 @@ const formatCurrency = (value: number) => {
   }).format(Number(value));
 };
 
-// --- Custom Tooltip (Screenshot jaisa popup) ---
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const date = new Date(`${label}-02`);
@@ -67,7 +63,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
               <span className="text-xs text-gray-500">Invoice count:</span>
               <span
                 className="text-xs font-bold ml-4"
-                style={{ color: "hsl(var(--chart-subtle))" }} // Light Purple
+                style={{ color: "hsl(var(--chart-subtle))" }} 
               >
                 {countData.value}
               </span>
@@ -78,7 +74,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
               <span className="text-xs text-gray-500">Total Spend:</span>
               <span
                 className="text-xs font-bold ml-4"
-                style={{ color: "hsl(var(--primary))" }} // Dark Purple
+                style={{ color: "hsl(var(--primary))" }}
               >
                 {formatCurrency(spendData.value)}
               </span>
@@ -99,17 +95,14 @@ export function InvoiceTrendChart() {
 
   const yAxisMax = 80;
 
-  // Data ko ready karna
   const chartData = data
     ? data.map((item) => ({
         ...item,
         total_spend: Number(item.total_spend),
         invoice_count: Number(item.invoice_count),
-        // X-Axis ko format karna (Screenshot jaisa)
         monthLabel: new Date(`${item.month}-02`).toLocaleString("en-US", {
           month: "short",
         }),
-        // Background columns ke liye
         backgroundBar: yAxisMax,
       }))
     : [];
@@ -136,7 +129,6 @@ export function InvoiceTrendChart() {
               stroke="#e5e7eb"
               vertical={false}
             />
-            {/* X-Axis (Jan, Feb...) */}
             <XAxis
               dataKey="monthLabel"
               axisLine={true}
@@ -144,7 +136,6 @@ export function InvoiceTrendChart() {
               fontSize={12}
               stroke="#6b7280"
             />
-            {/* Y-Axis (0, 20, 40...) */}
             <YAxis
               yAxisId="count"
               orientation="left"
@@ -154,7 +145,6 @@ export function InvoiceTrendChart() {
               stroke="#6b7280"
               domain={[0, yAxisMax]}
             />
-            {/* Y-Axis (Hidden, for Spend) */}
             <YAxis yAxisId="spend" hide={true} />
 
             <Tooltip
@@ -169,9 +159,8 @@ export function InvoiceTrendChart() {
               isAnimationActive={false}
             />
             
-            {/* Line 1 (Total Spend) - Dark Purple */}
             <Line
-              yAxisId="spend" // Hidden axis (0-10k) use karta hai
+              yAxisId="spend" 
               type="monotone"
               dataKey="total_spend"
               stroke="hsl(var(--primary))"
@@ -181,9 +170,8 @@ export function InvoiceTrendChart() {
               name="Total Spend"
             />
 
-            {/* Line 2 (Invoice Count) - Light Purple */}
             <Line
-              yAxisId="count" // Visible axis (0-80) use karta hai
+              yAxisId="count" 
               type="monotone"
               dataKey="invoice_count"
               stroke="hsl(var(--chart-subtle))"

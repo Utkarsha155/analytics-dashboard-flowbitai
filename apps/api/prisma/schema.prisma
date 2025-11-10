@@ -1,5 +1,4 @@
-// This is your Prisma schema file.
-// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 
 datasource db {
   provider = "postgresql"
