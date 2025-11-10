@@ -20,7 +20,7 @@ const prisma = new PrismaClient();
 const app = express();
 
 // Groq client initialization (using the safest instantiation)
-const groq = new Groq.default({
+const groq = new Groq({ 
   apiKey: process.env.GROQ_API_KEY,
 });
 
