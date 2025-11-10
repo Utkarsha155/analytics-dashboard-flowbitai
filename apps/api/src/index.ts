@@ -163,7 +163,7 @@ ${question}
 
     const chatCompletion = await groq.chat.completions.create({
   messages: [{ role: 'user', content: prompt }],
-  model: 'llama-3.1-70b-versatile',
+  model: 'llama-3.2-11b-text-preview',
   temperature: 0,
 });
 
@@ -192,7 +192,8 @@ Results: ${JSON.stringify(results).slice(0, 400)}
 `;
       const explain = await groq.chat.completions.create({
   messages: [{ role: 'user', content: explainPrompt }],
-  model: 'llama-3.1-70b-versatile',
+  model: 'llama-3.2-11b-text-preview',
+
   temperature: 0.2,
 });
 
