@@ -1,4 +1,8 @@
-import 'dotenv/config'; // Loads .env variables
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import { PrismaClient } from '@prisma/client';
+import Groq from 'groq-sdk';
 
 // --- Fix BigInt serialization for JSON ---
 declare global {
@@ -10,29 +14,20 @@ declare global {
   return this.toString();
 };
 
-
-// --- Imports ---
-import express from 'express';
-import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
-import Groq from 'groq-sdk'; // ✅ Correct Groq SDK import
-
-// --- Initialize clients ---
+// --- Initialize ---
 const prisma = new PrismaClient();
 const app = express();
 
-// ✅ Initialize Groq client properly
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-// --- Middlewares ---
 app.use(cors());
 app.use(express.json());
 
-// -----------------------------
-// 📊 1. GET /stats (Overview Cards)
-// -----------------------------
+// ======================================================
+// 📊 /stats — Overview Cards
+// ======================================================
 app.get('/stats', async (req, res) => {
   try {
     const totalSpend = await prisma.invoice.aggregate({ _sum: { amount: true } });
@@ -51,9 +46,9 @@ app.get('/stats', async (req, res) => {
   }
 });
 
-// -----------------------------
-// 📈 2. GET /invoice-trends (Line Chart)
-// -----------------------------
+// ======================================================
+// 📈 /invoice-trends — Line Chart
+// ======================================================
 app.get('/invoice-trends', async (req, res) => {
   try {
     const trends = await prisma.$queryRaw`
@@ -72,9 +67,9 @@ app.get('/invoice-trends', async (req, res) => {
   }
 });
 
-// -----------------------------
-// 🏆 3. GET /vendors/top10 (Bar Chart)
-// -----------------------------
+// ======================================================
+// 🏆 /vendors/top10 — Bar Chart
+// ======================================================
 app.get('/vendors/top10', async (req, res) => {
   try {
     const topVendors = await prisma.$queryRaw`
@@ -94,9 +89,9 @@ app.get('/vendors/top10', async (req, res) => {
   }
 });
 
-// -----------------------------
-// 🥧 4. GET /category-spend (Pie Chart)
-// -----------------------------
+// ======================================================
+// 🥧 /category-spend — Pie Chart
+// ======================================================
 app.get('/category-spend', async (req, res) => {
   try {
     const categorySpend = await prisma.$queryRaw`
@@ -114,9 +109,9 @@ app.get('/category-spend', async (req, res) => {
   }
 });
 
-// -----------------------------
-// 💸 5. GET /cash-outflow (Bar Chart)
-// -----------------------------
+// ======================================================
+// 💸 /cash-outflow — Bar Chart
+// ======================================================
 app.get('/cash-outflow', async (req, res) => {
   try {
     const outflow = await prisma.$queryRaw`
@@ -136,14 +131,14 @@ app.get('/cash-outflow', async (req, res) => {
   }
 });
 
-// -----------------------------
-// 🤖 6. POST /chat-with-data (AI SQL Assistant)
-// -----------------------------
+// ======================================================
+// 🤖 /chat-with-data — AI SQL Assistant
+// ======================================================
 app.post('/chat-with-data', async (req, res) => {
   const { question } = req.body;
 
   try {
-    // Step 1: Get schema
+    // 1️⃣ Get schema
     const schema = await prisma.$queryRaw`
       SELECT 
         table_name, column_name, data_type 
@@ -152,24 +147,20 @@ app.post('/chat-with-data', async (req, res) => {
       ORDER BY table_name, ordinal_position;
     `;
 
-    // Step 2: Updated prompt — forces valid PostgreSQL syntax
+    // 2️⃣ Build AI prompt
     const prompt = `
 You are an expert PostgreSQL SQL assistant.
-Generate a valid SQL query based on the user's question and schema below.
-⚠️ RULES:
-- Use double quotes around table and column names (e.g., "Invoice", "amount").
-- Always use CURRENT_DATE - INTERVAL '90 days' style for date ranges.
-- Do NOT include explanations or text, only return SQL.
-- Ensure the SQL starts with SELECT.
-
+Generate a valid SQL query for the question below using this schema.
+⚠️ Rules:
+- Always use double quotes for tables and columns.
+- For time filters, use CURRENT_DATE - INTERVAL '90 days'.
+- Return only SQL (no text).
 SCHEMA:
 ${JSON.stringify(schema)}
-
 QUESTION:
 ${question}
 `;
 
-    // Step 3: Generate SQL with Groq
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
       model: 'mixtral-8x7b-32768',
@@ -177,26 +168,42 @@ ${question}
     });
 
     let rawSql = chatCompletion.choices?.[0]?.message?.content?.trim() || '';
+    let sqlQuery = rawSql.replace(/```sql|```/gi, '').replace(/;$/, '').trim();
 
-    // Step 4: Clean the SQL output
-    const sqlQuery = rawSql
-      .replace(/```sql|```/gi, '')
-      .replace(/;$/, '')
-      .trim();
-
-    console.log('🧠 AI Generated SQL:', sqlQuery);
-
-    // Step 5: Basic validation
+    // 3️⃣ Validate query
     if (!sqlQuery.toLowerCase().startsWith('select')) {
       throw new Error(`Invalid SQL generated: ${sqlQuery}`);
     }
 
-    // Step 6: Run it safely
+    console.log('🧠 Final SQL before execution:', sqlQuery);
+
+    // 4️⃣ Execute SQL
     const results = await prisma.$queryRawUnsafe(sqlQuery);
 
+    // 5️⃣ Generate AI explanation
+    let explanation = '';
+    try {
+      const explainPrompt = `
+You are a data analyst. Explain this SQL result in one short English sentence.
+Question: ${question}
+SQL: ${sqlQuery}
+Results: ${JSON.stringify(results).slice(0, 400)}
+`;
+      const explain = await groq.chat.completions.create({
+        messages: [{ role: 'user', content: explainPrompt }],
+        model: 'mixtral-8x7b-32768',
+        temperature: 0.2,
+      });
+      explanation = explain.choices?.[0]?.message?.content?.trim() || '';
+    } catch (expErr) {
+      console.error('⚠️ Explanation generation failed:', expErr);
+    }
+
+    // ✅ Return all
     res.json({
       sql: sqlQuery,
       results_json: JSON.stringify(results),
+      explanation,
     });
   } catch (error: any) {
     console.error('!!! ERROR IN /chat-with-data !!!', error);
@@ -207,10 +214,10 @@ ${question}
   }
 });
 
-// -----------------------------
+// ======================================================
 // 🚀 Start Server
-// -----------------------------
-const PORT = process.env.PORT || 8080;
+// ======================================================
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`✅ Server is running on port ${PORT}`);
 });
