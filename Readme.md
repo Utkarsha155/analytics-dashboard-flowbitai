@@ -78,33 +78,35 @@ This solution fulfills the core objective, uses the specified Groq LLM, and resu
 
 ## ⚙️ How to Run Locally
 
-# Clone the repository
+### Clone the repository
 git clone https://github.com/Utkarsha155/analytics-dashboard-flowbitai.git
 
-# Move into backend
+### Move into backend
 cd apps/api
 
-# Install backend dependencies
+### Install backend dependencies
 npm install
 
-# Generate Prisma client and push schema
+### Generate Prisma client and push schema
 npx prisma generate
 npx prisma db push
 
-# (Optional) Seed database
+### (Optional) Seed database
 npx prisma db seed
 
-# Run backend
+### Run backend
 npm run start
-# → http://localhost:8080
 
-# Move into frontend
+### → http://localhost:8080
+
+### Move into frontend
 cd ../web
 
-# Install frontend dependencies
+### Install frontend dependencies
 npm install
 
-# Run frontend
+### Run frontend
 npm run dev
-# → http://localhost:3000
+
+### → http://localhost:3000
 
