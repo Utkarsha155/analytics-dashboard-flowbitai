@@ -6,9 +6,8 @@ import 'dotenv/config'; // Loads DB connection string and Groq Key
 };
 // --- END FIX ---
 
-// --- Groq Fix: Use CommonJS require to bypass the CJS/ESM conflict ---
-// This is the simplest way to get the Groq class in Node.js
-const GroqClient = require('groq'); 
+// --- Groq Fix: Use CommonJS require directly ---
+const Groq = require('groq'); 
 
 import { PrismaClient } from '@prisma/client';
 import express from 'express';
@@ -18,9 +17,9 @@ import cors from 'cors';
 const prisma = new PrismaClient();
 const app = express();
 
-// FIX: Groq client initialization - Use the nested constructor
-// This addresses the "Groq.default is not a constructor" error.
-const groq = new GroqClient.Groq({
+// FINAL FIX: Use the simple CJS instantiation now that we know the deployment environment requires it.
+// This is the line that will fix the deployment crash.
+const groq = new Groq.Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
@@ -168,7 +167,7 @@ app.post('/chat-with-data', async (req, res) => {
 
   } catch (error) {
     console.error('!!! ERROR IN /chat-with-data !!!', error);
-    res.status(500).json({ error: `AI Processing Failed. Please check the question format or backend logs.` });
+    res.status(500).json({ error: `AI Processing Failed. Check prompt/logs.` });
   }
 });
 
