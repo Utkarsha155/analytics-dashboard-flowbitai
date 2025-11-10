@@ -6,8 +6,9 @@ import 'dotenv/config'; // Loads DB connection string and Groq Key
 };
 // --- END FIX ---
 
-// --- Groq Fix: Use CommonJS require for stable instantiation ---
-const Groq = require('groq'); 
+// --- Groq Fix: Use CommonJS require to bypass the CJS/ESM conflict ---
+// This is the simplest way to get the Groq class in Node.js
+const GroqClient = require('groq'); 
 
 import { PrismaClient } from '@prisma/client';
 import express from 'express';
@@ -17,8 +18,9 @@ import cors from 'cors';
 const prisma = new PrismaClient();
 const app = express();
 
-// Groq client initialization (using the simplest working form)
-const groq = new Groq({
+// FIX: Groq client initialization - Use the nested constructor
+// This addresses the "Groq.default is not a constructor" error.
+const groq = new GroqClient.Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
@@ -50,7 +52,6 @@ app.get('/stats', async (req, res) => {
 // 2. GET /invoice-trends (Line Chart)
 app.get('/invoice-trends', async (req, res) => {
   try {
-    // FIX: GROUP BY clause now matches the expression in SELECT
     const trends = await prisma.$queryRaw`
       SELECT 
         to_char(date, 'YYYY-MM') as month,
