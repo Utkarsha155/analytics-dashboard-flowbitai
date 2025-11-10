@@ -8,8 +8,7 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies
-RUN pip install --no-cache-dir fastapi uvicorn[standard] vanna[groq] psycopg2-binary python-dotenv gunicorn
-
+RUN pip install 'vanna[groq,postgres]' openai groq psycopg2-binary fastapi uvicorn python-dotenv
 # Expose port (Render passes PORT env)
 EXPOSE 10000
 
