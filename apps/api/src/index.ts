@@ -143,45 +143,67 @@ app.post('/chat-with-data', async (req, res) => {
   const { question } = req.body;
 
   try {
-    // Get schema for AI context
+    // Step 1: Get schema
     const schema = await prisma.$queryRaw`
       SELECT 
         table_name, column_name, data_type 
       FROM information_schema.columns 
-      WHERE table_schema = 'public' 
+      WHERE table_schema = 'public'
       ORDER BY table_name, ordinal_position;
     `;
 
+    // Step 2: Updated prompt — forces valid PostgreSQL syntax
     const prompt = `
-You are a helpful PostgreSQL SQL assistant. 
-Generate a SQL query for the question based on this schema.
-Only return SQL (no explanation).
+You are an expert PostgreSQL SQL assistant.
+Generate a valid SQL query based on the user's question and schema below.
+⚠️ RULES:
+- Use double quotes around table and column names (e.g., "Invoice", "amount").
+- Always use CURRENT_DATE - INTERVAL '90 days' style for date ranges.
+- Do NOT include explanations or text, only return SQL.
+- Ensure the SQL starts with SELECT.
 
-SCHEMA: ${JSON.stringify(schema)}
-QUESTION: ${question}
+SCHEMA:
+${JSON.stringify(schema)}
+
+QUESTION:
+${question}
 `;
 
-    // Generate SQL using Groq
+    // Step 3: Generate SQL with Groq
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
       model: 'mixtral-8x7b-32768',
       temperature: 0,
     });
 
-    const rawSql = chatCompletion.choices[0]?.message?.content?.trim() || '';
-    const sqlQuery = rawSql.replace(/```sql|```|;/g, '').trim();
+    let rawSql = chatCompletion.choices?.[0]?.message?.content?.trim() || '';
 
-    // Run the SQL
+    // Step 4: Clean the SQL output
+    const sqlQuery = rawSql
+      .replace(/```sql|```/gi, '')
+      .replace(/;$/, '')
+      .trim();
+
+    console.log('🧠 AI Generated SQL:', sqlQuery);
+
+    // Step 5: Basic validation
+    if (!sqlQuery.toLowerCase().startsWith('select')) {
+      throw new Error(`Invalid SQL generated: ${sqlQuery}`);
+    }
+
+    // Step 6: Run it safely
     const results = await prisma.$queryRawUnsafe(sqlQuery);
 
-    // Send back results
     res.json({
       sql: sqlQuery,
       results_json: JSON.stringify(results),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('!!! ERROR IN /chat-with-data !!!', error);
-    res.status(500).json({ error: 'AI Processing Failed or invalid SQL.' });
+    res.status(500).json({
+      error: 'AI Processing Failed or invalid SQL.',
+      details: error.message || error,
+    });
   }
 });
 
