@@ -6,26 +6,23 @@ import 'dotenv/config'; // Loads DB connection string and Groq Key
 };
 // --- END FIX ---
 
-// --- Groq Fix: Use CommonJS require to bypass TypeScript/ESM conflict ---
-// This prevents the 'TypeError: strings.slice is not a function' error.
+// --- Groq Fix: Use CommonJS require for stable instantiation ---
 const Groq = require('groq'); 
 
 import { PrismaClient } from '@prisma/client';
 import express from 'express';
 import cors from 'cors';
-import axios from 'axios'; // Required for final proxy (if needed)
 
-// Initialize clients (Prisma needs the DB URL, Groq needs the API Key)
+// Initialize clients
 const prisma = new PrismaClient();
 const app = express();
 
-// Groq client initialization (using the safest instantiation)
-const groq = new Groq({ 
+// Groq client initialization (using the simplest working form)
+const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
 // --- Middlewares ---
-// Enable CORS for all origins (required for local/Vercel connections)
 app.use(cors()); 
 app.use(express.json());
 
@@ -34,13 +31,9 @@ app.use(express.json());
 // 1. GET /stats (Overview Cards)
 app.get('/stats', async (req, res) => {
   try {
-    const totalSpend = await prisma.invoice.aggregate({
-      _sum: { amount: true },
-    });
+    const totalSpend = await prisma.invoice.aggregate({ _sum: { amount: true } });
     const totalInvoices = await prisma.invoice.count();
-    const avgInvoice = await prisma.invoice.aggregate({
-      _avg: { amount: true },
-    });
+    const avgInvoice = await prisma.invoice.aggregate({ _avg: { amount: true } });
 
     res.json({
       totalSpend: totalSpend._sum.amount || 0,
@@ -57,7 +50,7 @@ app.get('/stats', async (req, res) => {
 // 2. GET /invoice-trends (Line Chart)
 app.get('/invoice-trends', async (req, res) => {
   try {
-    // FIX: GROUP BY clause now matches the expression in SELECT (to_char(date, 'YYYY-MM'))
+    // FIX: GROUP BY clause now matches the expression in SELECT
     const trends = await prisma.$queryRaw`
       SELECT 
         to_char(date, 'YYYY-MM') as month,
@@ -112,31 +105,9 @@ app.get('/category-spend', async (req, res) => {
   }
 });
 
-// 5. GET /invoices (Main Table)
-app.get('/invoices', async (req, res) => {
-  try {
-    const { search } = req.query;
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        OR: search ? [
-          { invoice_number: { contains: search as string, mode: 'insensitive' } },
-          { vendor: { name: { contains: search as string, mode: 'insensitive' } } }
-        ] : undefined,
-      },
-      include: { vendor: true },
-      orderBy: { date: 'desc' },
-    });
-    res.json(invoices);
-  } catch (error) {
-    console.error('!!! ERROR IN /invoices !!!', error);
-    res.status(500).json({ error: 'Failed to fetch invoices' });
-  }
-});
-
-// 6. GET /cash-outflow (Bar Chart)
+// 5. GET /cash-outflow (Bar Chart)
 app.get('/cash-outflow', async (req, res) => {
   try {
-    // FIX: GROUP BY clause now matches the expression in SELECT
     const outflow = await prisma.$queryRaw`
       SELECT 
         due_date::date as date,
@@ -156,7 +127,6 @@ app.get('/cash-outflow', async (req, res) => {
 
 // --- AI Endpoint (Task 2: "Chat with Data") ---
 app.post('/chat-with-data', async (req, res) => {
-  // NOTE: This endpoint uses the Groq SDK directly (Bypassing Vanna Server)
   const { question } = req.body;
 
   try {
@@ -192,12 +162,12 @@ app.post('/chat-with-data', async (req, res) => {
     // 4. Frontend ko data wapas bhejo
     res.json({
       sql: sqlQuery,
-      results_json: JSON.stringify(results), // Frontend will parse this
+      results_json: JSON.stringify(results), 
     });
 
   } catch (error) {
     console.error('!!! ERROR IN /chat-with-data !!!', error);
-    res.status(500).json({ error: `AI Processing Failed. Check prompt/logs.` });
+    res.status(500).json({ error: `AI Processing Failed. Please check the question format or backend logs.` });
   }
 });
 
