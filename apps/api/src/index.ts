@@ -162,10 +162,11 @@ ${question}
 `;
 
     const chatCompletion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'mixtral-8x7b-32768',
-      temperature: 0,
-    });
+  messages: [{ role: 'user', content: prompt }],
+  model: 'llama-3.1-70b-versatile',
+  temperature: 0,
+});
+
 
     let rawSql = chatCompletion.choices?.[0]?.message?.content?.trim() || '';
     let sqlQuery = rawSql.replace(/```sql|```/gi, '').replace(/;$/, '').trim();
@@ -190,10 +191,11 @@ SQL: ${sqlQuery}
 Results: ${JSON.stringify(results).slice(0, 400)}
 `;
       const explain = await groq.chat.completions.create({
-        messages: [{ role: 'user', content: explainPrompt }],
-        model: 'mixtral-8x7b-32768',
-        temperature: 0.2,
-      });
+  messages: [{ role: 'user', content: explainPrompt }],
+  model: 'llama-3.1-70b-versatile',
+  temperature: 0.2,
+});
+
       explanation = explain.choices?.[0]?.message?.content?.trim() || '';
     } catch (expErr) {
       console.error('⚠️ Explanation generation failed:', expErr);
