@@ -1,5 +1,4 @@
 "use client"; // Client component, kyunki ise active link pata karna hai
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -8,6 +7,7 @@ import {
   Users,
   Settings,
   Folder,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils"; // shadcn ka helper
 
@@ -18,6 +18,7 @@ export function Sidebar() {
   const navLinks = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/invoice", label: "Invoice", icon: FileText },
+    { href: "/chat", label: "Chat with Data", icon: MessageCircle }, // <-- ADD THIS
     { href: "/other-files", label: "Other files", icon: Folder },
     { href: "/departments", label: "Departments", icon: Users },
     { href: "/users", label: "Users", icon: Settings },
