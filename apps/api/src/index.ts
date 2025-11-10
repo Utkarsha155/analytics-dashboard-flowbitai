@@ -1,38 +1,37 @@
-import 'dotenv/config'; // Password loader
-// Poore server ko batata hai ki BigInt ko string mein kaise badalna hai
+import 'dotenv/config'; // Loads DB connection string and Groq Key
+
+// --- BigInt FIX: Tells JSON.stringify how to handle large numbers ---
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
-// --- END 'BigInt' FIX ---
+// --- END FIX ---
+
+// --- Groq Fix: Use CommonJS require to bypass TypeScript/ESM conflict ---
+// This prevents the 'TypeError: strings.slice is not a function' error.
+const Groq = require('groq'); 
 
 import { PrismaClient } from '@prisma/client';
 import express from 'express';
 import cors from 'cors';
+import axios from 'axios'; // Required for final proxy (if needed)
 
-// Initialize app & prisma client
-const app = express();
+// Initialize clients (Prisma needs the DB URL, Groq needs the API Key)
 const prisma = new PrismaClient();
+const app = express();
 
-const Groq = require('groq');
-// We use 'as any' to bypass the TypeScript misinterpretation of the constructor
-// Initialize Groq client
-const groq = new Groq({
+// Groq client initialization (using the safest instantiation)
+const groq = new Groq.default({
   apiKey: process.env.GROQ_API_KEY,
 });
 
 // --- Middlewares ---
+// Enable CORS for all origins (required for local/Vercel connections)
+app.use(cors()); 
 app.use(express.json());
-app.use(cors());
 
-// --- Routes ---
-// Simple "health check" route
-app.get('/', (req, res) => {
-  res.send('API is running!');
-});
+// --- Core Data Endpoints (Task 1) ---
 
-// --- API Endpoints ---
-
-// 1. GET /stats (For the overview cards)
+// 1. GET /stats (Overview Cards)
 app.get('/stats', async (req, res) => {
   try {
     const totalSpend = await prisma.invoice.aggregate({
@@ -42,6 +41,7 @@ app.get('/stats', async (req, res) => {
     const avgInvoice = await prisma.invoice.aggregate({
       _avg: { amount: true },
     });
+
     res.json({
       totalSpend: totalSpend._sum.amount || 0,
       totalInvoices: totalInvoices || 0,
@@ -54,18 +54,17 @@ app.get('/stats', async (req, res) => {
   }
 });
 
-// 2. GET /invoice-trends (For the main line chart)
+// 2. GET /invoice-trends (Line Chart)
 app.get('/invoice-trends', async (req, res) => {
   try {
-    // --- YEH HAI SQL TYPO FIX ---
-    // GROUP BY clause ko SELECT clause se match kar diya hai
+    // FIX: GROUP BY clause now matches the expression in SELECT (to_char(date, 'YYYY-MM'))
     const trends = await prisma.$queryRaw`
       SELECT 
         to_char(date, 'YYYY-MM') as month,
         SUM(amount) as total_spend,
         COUNT(id) as invoice_count
       FROM "Invoice"
-      GROUP BY to_char(date, 'YYYY-MM') -- YEH LINE FIX HO GAYI HAI
+      GROUP BY to_char(date, 'YYYY-MM')
       ORDER BY month;
     `;
     res.json(trends);
@@ -75,8 +74,7 @@ app.get('/invoice-trends', async (req, res) => {
   }
 });
 
-// 3. GET /vendors/top10 (For the vendor bar chart)
-// (Is route mein 'BigInt' fix (Step 1) se help milegi)
+// 3. GET /vendors/top10 (Bar Chart)
 app.get('/vendors/top10', async (req, res) => {
   try {
     const topVendors = await prisma.$queryRaw`
@@ -96,7 +94,7 @@ app.get('/vendors/top10', async (req, res) => {
   }
 });
 
-// 4. GET /category-spend (For the pie chart)
+// 4. GET /category-spend (Pie Chart)
 app.get('/category-spend', async (req, res) => {
   try {
     const accurateCategorySpend = await prisma.$queryRaw`
@@ -114,7 +112,7 @@ app.get('/category-spend', async (req, res) => {
   }
 });
 
-// 5. GET /invoices (For the main table)
+// 5. GET /invoices (Main Table)
 app.get('/invoices', async (req, res) => {
   try {
     const { search } = req.query;
@@ -135,38 +133,34 @@ app.get('/invoices', async (req, res) => {
   }
 });
 
-// 6. GET /cash-outflow (For the cash outflow chart)
-// 6. GET /cash-outflow (For the cash outflow chart)
+// 6. GET /cash-outflow (Bar Chart)
 app.get('/cash-outflow', async (req, res) => {
   try {
-    // --- YEH HAI SQL FIX ---
-    // Hum 'GROUP BY' ko 'SELECT' se 100% match kar rahe hain
+    // FIX: GROUP BY clause now matches the expression in SELECT
     const outflow = await prisma.$queryRaw`
       SELECT 
         due_date::date as date,
         SUM(amount) as amount_due
       FROM "Invoice"
       WHERE status != 'Paid'
-      GROUP BY due_date::date  -- YEH LINE FIX HO GAYI HAI
+      GROUP BY due_date::date
       ORDER BY date
       LIMIT 30;
     `;
     res.json(outflow);
   } catch (error) {
-    console.error("!!! ERROR IN /cash-outflow !!!", error);
+    console.error('!!! ERROR IN /cash-outflow !!!', error);
     res.status(500).json({ error: 'Failed to fetch cash outflow' });
   }
 });
-// 7. POST /chat-with-data (This one is for Phase 4)
-// Endpoint 7. POST /chat-with-data (Final Working Version)
-// Endpoint 7. POST /chat-with-data (Final Working Version)
+
+// --- AI Endpoint (Task 2: "Chat with Data") ---
 app.post('/chat-with-data', async (req, res) => {
-  // NOTE: Groq key is loaded via .env, client is initialized globally
+  // NOTE: This endpoint uses the Groq SDK directly (Bypassing Vanna Server)
   const { question } = req.body;
 
   try {
-    // --- 1. Schema aur Question ko Groq ke paas bhejo ---
-    // Hum database ka schema nikal kar LLM ko de rahe hain
+    // 1. Get Schema (Provide Groq with table structure)
     const schema = await prisma.$queryRaw`
       SELECT 
         table_name, column_name, data_type 
@@ -176,12 +170,12 @@ app.post('/chat-with-data', async (req, res) => {
     `;
 
     const prompt = `You are a helpful PostgreSQL SQL assistant. Your task is to generate a PostgreSQL query based on the user's question. The database schema is provided below. Only return the SQL query, nothing else.
-
+    
     SCHEMA: ${JSON.stringify(schema)}
-
+    
     Question: ${question}`;
 
-    // --- 2. Groq se SQL generate karwao ---
+    // 2. Groq se SQL generate karwao
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
       model: 'mixtral-8x7b-32768', 
@@ -189,13 +183,13 @@ app.post('/chat-with-data', async (req, res) => {
     });
 
     const rawSql = chatCompletion.choices[0].message.content.trim();
-    // Remove markdown and semicolon for safe execution
+    // Clean SQL for safe execution
     const sqlQuery = rawSql.replace(/```sql|```|;/g, '').trim();
 
-    // --- 3. Generated SQL query ko database pe run karo ---
+    // 3. Generated SQL query ko database pe run karo
     const results = await prisma.$queryRawUnsafe(sqlQuery);
 
-    // --- 4. Frontend ko data wapas bhejo ---
+    // 4. Frontend ko data wapas bhejo
     res.json({
       sql: sqlQuery,
       results_json: JSON.stringify(results), // Frontend will parse this
@@ -203,13 +197,12 @@ app.post('/chat-with-data', async (req, res) => {
 
   } catch (error) {
     console.error('!!! ERROR IN /chat-with-data !!!', error);
-    res.status(500).json({ error: `AI Processing Failed. Please check the question format or backend logs.` });
+    res.status(500).json({ error: `AI Processing Failed. Check prompt/logs.` });
   }
 });
+
 // --- Start the Server ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  // Yeh console.log ab local pe nahi dikhega, sirf Render pe dikhega
-  // Humne password check wala log hata diya hai
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
