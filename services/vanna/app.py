@@ -4,24 +4,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# --- NAYA FIX: BYPASSING vanna.groq ---
-# Hum Vanna ka remote class use karenge (jo sabse stable hai)
-from vanna.remote import VannaAI
+# --- NAYA FIX: BYPASSING VannaAI and using stable OpenAI_Chat class ---
+# Yeh class stable hai aur isse hum Groq ka URL dekar chala sakte hain
+from vanna.openai import OpenAI_Chat 
 from vanna.postgres import VannaPostgres
-
-# Humne 'groq' package alag se install kiya hai, isliye yeh kaam karega.
 # --- END NAYA FIX ---
+
+# Groq API endpoint aur model name
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODEL = "mixtral-8x7b-32768" # Stable Groq model
 
 load_dotenv()
 
-# ✅ Initialize Vanna (Naya Bypass Tareeka)
-# VannaAI base class use karo aur model ko 'groq' batao
-vn = VannaAI(
-    model="groq",
-    api_key=os.getenv("GROQ_API_KEY")
+# ✅ Initialize Vanna (Ab hum stable OpenAI_Chat use karenge)
+# Hum base_url dekar Groq ki service ko hijack kar rahe hain
+vn = OpenAI_Chat(
+    model=GROQ_MODEL,
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url=GROQ_BASE_URL
 )
 
-# ✅ Connect PostgreSQL
+# ✅ Connect PostgreSQL (Same as before)
 db_url = os.getenv("DATABASE_URL")
 vanna_db_url = db_url.replace("postgresql://", "postgresql+psycopg2://")
 vn.connect_to_postgres(connection_string=vanna_db_url)
