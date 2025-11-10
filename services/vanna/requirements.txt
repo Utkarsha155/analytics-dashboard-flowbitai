@@ -1,0 +1,3 @@
+vanna[fastapi,groq,postgres]
+uvicorn
+psycopg2-binary
