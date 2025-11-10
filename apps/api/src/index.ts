@@ -7,7 +7,6 @@ import 'dotenv/config'; // Loads DB connection string and Groq Key
 // --- END FIX ---
 
 // --- Groq Fix: Use CommonJS require directly ---
-const Groq = require('groq'); 
 
 import { PrismaClient } from '@prisma/client';
 import express from 'express';
@@ -19,9 +18,16 @@ const app = express();
 
 // FINAL FIX: Use the simple CJS instantiation now that we know the deployment environment requires it.
 // This is the line that will fix the deployment crash.
-const groq = new Groq.Groq({
+// --- Final Initialization Fix ---
+const GroqWrapper = require('groq'); 
+
+// FIX: This checks if the Groq constructor is the main export or nested under .default
+const GroqClient = GroqWrapper.Groq || GroqWrapper.default || GroqWrapper;
+
+const groq = new GroqClient({
   apiKey: process.env.GROQ_API_KEY,
 });
+// --- END FIX ---
 
 // --- Middlewares ---
 app.use(cors()); 
