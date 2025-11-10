@@ -22,8 +22,31 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+
 app.use(cors());
 app.use(express.json());
+
+// ======================================================
+// 🧾 /invoices — Fetch all invoices
+// ======================================================
+app.get('/invoices', async (req, res) => {
+  try {
+    const invoices = await prisma.invoice.findMany({
+      include: {
+        vendor: true,
+        customer: true,
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
+    res.json(invoices);
+  } catch (error) {
+    console.error('!!! ERROR IN /invoices !!!', error);
+    res.status(500).json({ error: 'Failed to fetch invoices' });
+  }
+});
 
 // ======================================================
 // 📊 /stats — Overview Cards
@@ -51,7 +74,7 @@ app.get('/stats', async (req, res) => {
 // ======================================================
 app.get('/invoice-trends', async (req, res) => {
   try {
-    const trends = await prisma.$queryRaw`
+    const trends = await prisma.$queryRawUnsafe(`
       SELECT 
         to_char(date, 'YYYY-MM') as month,
         SUM(amount) as total_spend,
@@ -59,7 +82,7 @@ app.get('/invoice-trends', async (req, res) => {
       FROM "Invoice"
       GROUP BY to_char(date, 'YYYY-MM')
       ORDER BY month;
-    `;
+    `);
     res.json(trends);
   } catch (error) {
     console.error('!!! ERROR IN /invoice-trends !!!', error);
@@ -72,7 +95,7 @@ app.get('/invoice-trends', async (req, res) => {
 // ======================================================
 app.get('/vendors/top10', async (req, res) => {
   try {
-    const topVendors = await prisma.$queryRaw`
+    const topVendors = await prisma.$queryRawUnsafe(`
       SELECT 
         v.name,
         SUM(i.amount) as total_spend
@@ -81,7 +104,7 @@ app.get('/vendors/top10', async (req, res) => {
       GROUP BY v.name
       ORDER BY total_spend DESC
       LIMIT 10;
-    `;
+    `);
     res.json(topVendors);
   } catch (error) {
     console.error('!!! ERROR IN /vendors/top10 !!!', error);
@@ -94,14 +117,14 @@ app.get('/vendors/top10', async (req, res) => {
 // ======================================================
 app.get('/category-spend', async (req, res) => {
   try {
-    const categorySpend = await prisma.$queryRaw`
+    const categorySpend = await prisma.$queryRawUnsafe(`
       SELECT
         category,
         SUM(price * quantity) as total_spend
       FROM "LineItem"
       GROUP BY category
       ORDER BY total_spend DESC;
-    `;
+    `);
     res.json(categorySpend);
   } catch (error) {
     console.error('!!! ERROR IN /category-spend !!!', error);
@@ -114,7 +137,7 @@ app.get('/category-spend', async (req, res) => {
 // ======================================================
 app.get('/cash-outflow', async (req, res) => {
   try {
-    const outflow = await prisma.$queryRaw`
+    const outflow = await prisma.$queryRawUnsafe(`
       SELECT 
         due_date::date as date,
         SUM(amount) as amount_due
@@ -123,7 +146,7 @@ app.get('/cash-outflow', async (req, res) => {
       GROUP BY due_date::date
       ORDER BY date
       LIMIT 30;
-    `;
+    `);
     res.json(outflow);
   } catch (error) {
     console.error('!!! ERROR IN /cash-outflow !!!', error);
@@ -138,16 +161,14 @@ app.post('/chat-with-data', async (req, res) => {
   const { question } = req.body;
 
   try {
-    // 1️⃣ Get schema
-    const schema = await prisma.$queryRaw`
+    const schema = await prisma.$queryRawUnsafe(`
       SELECT 
         table_name, column_name, data_type 
       FROM information_schema.columns 
       WHERE table_schema = 'public'
       ORDER BY table_name, ordinal_position;
-    `;
+    `);
 
-    // 2️⃣ Build AI prompt
     const prompt = `
 You are an expert PostgreSQL SQL assistant.
 Generate a valid SQL query for the question below using this schema.
@@ -162,26 +183,22 @@ ${question}
 `;
 
     const chatCompletion = await groq.chat.completions.create({
-  messages: [{ role: 'user', content: prompt }],
-  model: 'gemma-2-9b-it',
-  temperature: 0,
-});
-
+      messages: [{ role: 'user', content: prompt }],
+      model: GROQ_MODEL,
+      temperature: 0,
+    });
 
     let rawSql = chatCompletion.choices?.[0]?.message?.content?.trim() || '';
     let sqlQuery = rawSql.replace(/```sql|```/gi, '').replace(/;$/, '').trim();
 
-    // 3️⃣ Validate query
     if (!sqlQuery.toLowerCase().startsWith('select')) {
       throw new Error(`Invalid SQL generated: ${sqlQuery}`);
     }
 
     console.log('🧠 Final SQL before execution:', sqlQuery);
 
-    // 4️⃣ Execute SQL
     const results = await prisma.$queryRawUnsafe(sqlQuery);
 
-    // 5️⃣ Generate AI explanation
     let explanation = '';
     try {
       const explainPrompt = `
@@ -191,17 +208,15 @@ SQL: ${sqlQuery}
 Results: ${JSON.stringify(results).slice(0, 400)}
 `;
       const explain = await groq.chat.completions.create({
-  messages: [{ role: 'user', content: explainPrompt }],
-  model: 'gemma-2-9b-it',
-  temperature: 0.2,
-});
-
+        messages: [{ role: 'user', content: explainPrompt }],
+        model: GROQ_MODEL,
+        temperature: 0.2,
+      });
       explanation = explain.choices?.[0]?.message?.content?.trim() || '';
     } catch (expErr) {
       console.error('⚠️ Explanation generation failed:', expErr);
     }
 
-    // ✅ Return all
     res.json({
       sql: sqlQuery,
       results_json: JSON.stringify(results),
@@ -222,4 +237,5 @@ Results: ${JSON.stringify(results).slice(0, 400)}
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`✅ Server is running on port ${PORT}`);
+  console.log(`==> Your service is live 🎉`);
 });
