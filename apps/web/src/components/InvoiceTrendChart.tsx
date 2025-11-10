@@ -1,43 +1,94 @@
-"use client"; // Charts ko client-side pe render karna padta hai
+"use client";
 
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
-  LineChart,
+  ComposedChart,
   Line,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  Legend,
+  CartesianGrid,
 } from "recharts";
-import useSWR from "swr"; // Data fetching ke liye
+import useSWR from "swr";
 
+// --- Fetcher (Jo errors ko handle karta hai) ---
 const fetcher = async (url: string) => {
   const res = await fetch(url);
-
   if (!res.ok) {
-    // --- THIS IS THE FIX ---
-    // We cast 'error' to 'any' to allow adding custom properties
     const error: any = new Error("An error occurred while fetching the data.");
-    // --- END FIX ---
-
     error.info = await res.json();
     error.status = res.status;
     throw error;
   }
-
   return res.json();
 };
-// API se data aisa dikhega: [{ month: "2025-01", total_spend: 1000, invoice_count: 5 }]
+
+// API se data ka type
 type TrendData = {
   month: string;
   total_spend: number;
   invoice_count: number;
+};
+
+// --- Currency Formatter (Figma jaisa) ---
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+  }).format(Number(value));
+};
+
+// --- Custom Tooltip (Screenshot jaisa popup) ---
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const date = new Date(`${label}-02`);
+    const monthYear = date.toLocaleString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+
+    const spendData = payload.find((p: any) => p.dataKey === "total_spend");
+    const countData = payload.find((p: any) => p.dataKey === "invoice_count");
+
+    return (
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
+        <p className="text-sm font-semibold text-gray-800">{monthYear}</p>
+        <div className="mt-2 space-y-1">
+          {countData && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500">Invoice count:</span>
+              <span
+                className="text-xs font-bold ml-4"
+                style={{ color: "hsl(var(--chart-subtle))" }} // Light Purple
+              >
+                {countData.value}
+              </span>
+            </div>
+          )}
+          {spendData && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500">Total Spend:</span>
+              <span
+                className="text-xs font-bold ml-4"
+                style={{ color: "hsl(var(--primary))" }} // Dark Purple
+              >
+                {formatCurrency(spendData.value)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return null;
 };
 
 export function InvoiceTrendChart() {
@@ -46,41 +97,102 @@ export function InvoiceTrendChart() {
     fetcher
   );
 
+  const yAxisMax = 80;
+
+  // Data ko ready karna
+  const chartData = data
+    ? data.map((item) => ({
+        ...item,
+        total_spend: Number(item.total_spend),
+        invoice_count: Number(item.invoice_count),
+        // X-Axis ko format karna (Screenshot jaisa)
+        monthLabel: new Date(`${item.month}-02`).toLocaleString("en-US", {
+          month: "short",
+        }),
+        // Background columns ke liye
+        backgroundBar: yAxisMax,
+      }))
+    : [];
+
   if (error) return <div>Failed to load chart</div>;
   if (!data) return <div>Loading...</div>;
-const chartData = data.map((item) => ({
-  ...item,
-  total_spend: Number(item.total_spend),
-  invoice_count: Number(item.invoice_count),
-}));
+
   return (
-    <Card>
+    <Card className="bg-white shadow-sm border border-gray-200 rounded-lg">
       <CardHeader>
         <CardTitle>Invoice Volume + Value Trend</CardTitle>
+        <CardDescription>
+          Invoice count and total spend over 12 months.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <XAxis dataKey="month" />
-            <YAxis yAxisId="left" />
-            <YAxis yAxisId="right" orientation="right" />
-            <Tooltip />
-            <Legend />
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#e5e7eb"
+              vertical={false}
+            />
+            {/* X-Axis (Jan, Feb...) */}
+            <XAxis
+              dataKey="monthLabel"
+              axisLine={true}
+              tickLine={true}
+              fontSize={12}
+              stroke="#6b7280"
+            />
+            {/* Y-Axis (0, 20, 40...) */}
+            <YAxis
+              yAxisId="count"
+              orientation="left"
+              axisLine={true}
+              tickLine={true}
+              fontSize={12}
+              stroke="#6b7280"
+              domain={[0, yAxisMax]}
+            />
+            {/* Y-Axis (Hidden, for Spend) */}
+            <YAxis yAxisId="spend" hide={true} />
+
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ fill: "hsl(var(--primary) / 0.1)" }}
+            />
+            <Bar
+              yAxisId="count"
+              dataKey="backgroundBar"
+              barSize={40}
+              fill="hsl(var(--primary) / 0.05)"
+              isAnimationActive={false}
+            />
+            
+            {/* Line 1 (Total Spend) - Dark Purple */}
             <Line
-              yAxisId="left"
+              yAxisId="spend" // Hidden axis (0-10k) use karta hai
               type="monotone"
               dataKey="total_spend"
-              stroke="#8884d8"
+              stroke="hsl(var(--primary))"
+              strokeWidth={3}
+              dot={false}
+              activeDot={{ r: 5, strokeWidth: 2 }}
               name="Total Spend"
             />
+
+            {/* Line 2 (Invoice Count) - Light Purple */}
             <Line
-              yAxisId="right"
+              yAxisId="count" // Visible axis (0-80) use karta hai
               type="monotone"
               dataKey="invoice_count"
-              stroke="#82ca9d"
+              stroke="hsl(var(--chart-subtle))"
+              strokeWidth={3}
+              dot={false}
+              activeDot={{ r: 5, strokeWidth: 2 }}
               name="Invoice Count"
             />
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

@@ -1,71 +1,95 @@
-"use client"; // Client component, kyunki ise active link pata karna hai
+"use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
-  Users,
-  Settings,
   Folder,
+  Users,
   MessageCircle,
+  Settings,
 } from "lucide-react";
-import { cn } from "@/lib/utils"; // shadcn ka helper
+import { cn } from "@/lib/utils";
+
+// Logo component (bottom)
+function FlowbitLogo() {
+  return (
+    <div className="flex items-center gap-2">
+      <img
+        src="https://media.licdn.com/dms/image/v2/D4D0BAQF2OkxzyGCE5Q/company-logo_200_200/B4DZnDcZkQJcAM-/0/1759920626345/flowbit_ai_logo?e=2147483647&v=beta&t=pqGeLX13tftHUSDyG_uf0fdokosWbd9CnF4Jok9I9Yc"
+        alt="Flowbit AI Logo"
+        className="h-8 w-8 rounded"
+      />
+      <span className="text-lg font-bold text-gray-800">Flowbit AI</span>
+    </div>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
 
-  // Sidebar ke links
   const navLinks = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/invoice", label: "Invoice", icon: FileText },
-    { href: "/chat", label: "Chat with Data", icon: MessageCircle }, // <-- ADD THIS
+    { href: "/chat", label: "Chat with Data", icon: MessageCircle },
     { href: "/other-files", label: "Other files", icon: Folder },
     { href: "/departments", label: "Departments", icon: Users },
-    { href: "/users", label: "Users", icon: Settings },
+    { href: "/users", label: "Users", icon: Users },
+    { href: "/settings", label: "Settings", icon: Settings },
   ];
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
-      {/* Top ke links */}
-      <nav className="flex flex-col items-center gap-4 px-2 py-4">
-        {/* Flowbit AI Logo (Simple) */}
-        <Link
-          href="#"
-          className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
-        >
-          <span className="text-sm font-bold">FA</span>
-        </Link>
+    <aside className="fixed left-0 top-0 z-20 flex h-full w-60 flex-col border-r bg-white shadow-sm">
+      {/* --- TOP SECTION (This part is updated) --- */}
+      <div className="flex items-center gap-3 px-5 py-4 border-b">
+        {/* Your new "B" logo */}
+        <img
+          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrrNSEOfP6-8ebNg-djnorO8LYdltG-8XgTg&s"
+          alt="Buchhaltung Logo"
+          className="h-9 w-9 rounded-lg"
+        />
+        <div>
+          <h2 className="text-sm font-semibold text-gray-800">Buchhaltung</h2>
+          <span className="text-xs text-gray-500">12 members</span>
+        </div>
+      </div>
+      {/* --- END UPDATE --- */}
 
-        {/* Navigation Links */}
-        {navLinks.map((link) => (
-          <Link
-            key={link.label}
-            href={link.href}
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-              pathname === link.href
-                ? "bg-accent text-accent-foreground"
-                : ""
-            )}
-            title={link.label} // Tooltip ke liye
-          >
-            <link.icon className="h-5 w-5" />
-            <span className="sr-only">{link.label}</span>
-          </Link>
-        ))}
+      {/* Navigation Section */}
+      <nav className="flex flex-col px-4 py-6 space-y-1 text-sm font-medium">
+        <span className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase">
+          General
+        </span>
+        {navLinks.map((link) => {
+          const isActive = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2.5 transition-all",
+                isActive
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              )}
+            >
+              <link.icon
+                className={cn(
+                  "h-5 w-5",
+                  isActive ? "text-primary" : "text-gray-500"
+                )}
+              />
+              {link.label}
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* Neeche ka Settings link (Screenshot mein alag se hai) */}
-      <nav className="mt-auto flex flex-col items-center gap-4 px-2 py-4">
-        <Link
-          href="/settings"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-          title="Settings"
-        >
-          <Settings className="h-5 w-5" />
-          <span className="sr-only">Settings</span>
-        </Link>
-      </nav>
+      {/* Bottom Section: Flowbit AI Logo */}
+      <div className="mt-auto border-t px-5 py-4">
+        <FlowbitLogo />
+      </div>
     </aside>
   );
 }

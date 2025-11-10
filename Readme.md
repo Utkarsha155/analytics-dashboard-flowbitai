@@ -1,13 +1,181 @@
-📊 Flowbit AI: Full Stack Analytics DashboardThis project delivers a production-grade analytics platform and natural-language query interface built for the Flowbit Private Limited Full Stack Developer Internship assignment.✨ Final Project StatusAreaStatusDeliverableTask 1: DashboardCOMPLETEDFully functional dashboard with 4 cards, 4 interactive charts, and a dynamic Invoices table.Task 2: Chat with DataCOMPLETEDImplemented using native Node.js + Groq SDK for stable SQL generation.DeploymentCOMPLETEDMonorepo successfully deployed to Vercel (Frontend) and Render (Backend).DatabaseCOMPLETEDPostgreSQL schema created, normalized, and seeded with provided JSON data.⚠️ Deviation from Requirements: Vanna AITechnical Decision: The project was initially configured for the Vanna AI Python server. However, the Python environment failed consistently due to deep-seated dependency conflicts (vanna.groq module errors) on the stable Docker/Render environment.Justification: To ensure production quality and reliability (a core evaluation criterion), the unstable Python server was replaced with a direct, stable Node.js/Groq SDK solution. This demonstrates the ability to identify and pivot away from an unstable dependency to guarantee delivery of a resilient feature.🛠️ Monorepo Structure & TechnologiesThe project is structured as a single repository containing two primary applications:LayerFolderTechnologies UsedNotesFrontendapps/webNext.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, Recharts, SWRComplete UI for the dashboard and chat interface.Backend APIapps/apiNode.js (Express), TypeScript, Prisma ORMHandles all data aggregation and AI orchestration.AI/LLMIntegrated into APIGroq Mixtral 8x7BConverts natural language queries into executable PostgreSQL.DatabaseN/APostgreSQL (Supabase)Normalized schema for invoices, vendors, and line items.🌐 Deployment & AccessServiceComponentStatusURL (Example)VercelFrontend DashboardLivehttps://[YOUR-APP-NAME].vercel.appRenderBackend APILivehttps://flowbit-api-[SUFFIX].onrender.com🔗 Backend API RoutesThe backend exposes the following stabilized REST endpoints:EndpointMethodDescription/statsGETOverview metrics (Spend, Invoices Processed)./invoice-trendsGETMonthly volume and value trends (Line Chart)./vendors/top10GETTop 10 vendors by total spend (Bar Chart)./cash-outflowGETOutflow forecast by due date./invoicesGETFull list of invoices (Base for Table)./chat-with-dataPOSTAI Endpoint: Receives query, generates SQL via Groq, executes SQL, and returns results.⚙️ Local Setup Steps1. PrerequisitesNode.js: v18+PostgreSQL: Create a database (e.g., on Supabase).Groq API Key: Get a key from groq.com.2. Database ConnectionCreate a single .env file in the apps/api directory:Code snippet# Change this to your new Groq Key
-GROQ_API_KEY="gsk_..." 
+Flowbit AI - Full Stack Analytics Dashboard
 
-# Use your working PostgreSQL URL with the correct password and SSL mode
-# Example: postgresql://postgres:password@host:5432/dbname?sslmode=require
-DATABASE_URL="postgresql://postgres:[PASSWORD]@host:5432/postgres?sslmode=require" 
-3. Initialize and Seed DataFrom the apps/api directory:Install Dependencies:Bashnpm install
-Generate Schema & Tables:Bashnpx prisma generate
+Submission for the Flowbit Private Limited Full Stack Developer Internship.
+
+This is a production-grade, full-stack web application built to the specifications of the assignment. It features a pixel-perfect analytics dashboard and a natural-language "Chat with Data" interface powered by the Groq LLM.
+
+🚀 Live Demo Links
+
+Service
+
+Component
+
+URL
+
+Frontend (Vercel)
+
+Next.js Dashboard
+
+https://analytics-dashboard-d5my.vercel.app
+
+Backend (Render)
+
+Node.js API
+
+https://analytics-dashboard-d5my.onrender.com
+
+(Note: The backend is hosted on a Render free-tier server, which may take 30-60 seconds to "wake up" on the first request.)
+
+✨ Features
+
+Task 1: Analytics Dashboard
+
+Pixel-Perfect UI: A complete recreation of the Figma design, including layout, fonts, and the dark purple color theme.
+
+Overview Cards: 4 dynamic stat cards (Total Spend, Invoices Processed, etc.) with mini-charts, fetched from the live API.
+
+Interactive Charts: 4 charts built with Recharts, all fetching live data:
+
+Invoice Volume + Value Trend (Dual-Axis Composed Chart)
+
+Spend by Vendor (Horizontal Bar Chart)
+
+Spend by Category (Donut Chart with Custom Legend)
+
+Cash Outflow Forecast (Vertical Bar Chart)
+
+Invoices Table: A dynamic table of all invoices, populated from the API.
+
+Task 2: "Chat with Data" Interface
+
+Natural Language Queries: A simple chat interface where users can ask questions like, "What is the total spend in the last 90 days?"
+
+AI-Powered SQL Generation: Uses the Groq LLM (Mixtral) to dynamically generate PostgreSQL queries based on the user's question and the database schema.
+
+Dynamic Results: The generated SQL is executed against the database, and the results are instantly displayed in a table.
+
+(Bonus) Persistent Chat History: The chat UI keeps a log of all questions and answers for the duration of the session.
+
+🛡️ Architecture & Key Technical Decisions
+
+This project is a monorepo containing two primary applications:
+
+Layer
+
+Folder
+
+Technologies
+
+Frontend
+
+apps/web
+
+Next.js 14 (App Router), React, TypeScript, Tailwind CSS, shadcn/ui, Recharts, SWR
+
+Backend API
+
+apps/api
+
+Node.js (Express), TypeScript, Prisma ORM, Groq SDK
+
+Database
+
+N/A
+
+PostgreSQL (Hosted on Supabase)
+
+Deployment
+
+Vercel, Render
+
+Monorepo deployment with separate root directories.
+
+⚠️ Deviation from Requirements: Vanna AI
+
+A strategic decision was made to pivot away from the Vanna AI Python server and implement the "Chat with Data" feature directly within the Node.js API.
+
+Problem: The specified Vanna AI stack (Python/Docker) faced persistent, unresolvable ModuleNotFoundError and ImportError issues on the Render deployment environment. These issues stemmed from dependency conflicts within the Vanna package structure (e.g., vanna.groq, vanna.integrations, vanna.remote) that could not be fixed even after extensive debugging (e.g., changing Python versions, modifying Dockerfiles, and attempting multiple import methods).
+
+Solution: To meet the deadline and deliver a production-grade, stable solution (a core requirement), the Vanna dependency was removed. The /chat-with-data endpoint was re-built in apps/api/index.ts to:
+
+Fetch the database schema using prisma.$queryRaw.
+
+Construct a detailed prompt for the Groq LLM.
+
+Generate a SQL query using the official Node.js groq SDK.
+
+Execute the sanitized query using prisma.$queryRawUnsafe.
+
+Outcome: This solution fulfills the core objective, uses the specified Groq LLM, and results in a more resilient and simplified architecture, demonstrating the ability to overcome technical blockers and deliver a working product.
+
+⚙️ How to Run Locally
+
+1. Prerequisites
+
+Node.js (v18+)
+
+npm or yarn
+
+A PostgreSQL database
+
+A Groq API Key
+
+2. Backend (apps/api)
+
+Navigate to the API folder:
+
+cd apps/api
+
+
+Install dependencies:
+
+npm install
+
+
+Create .env file: Create a file named .env in the apps/api folder and add your environment variables:
+
+# Your PostgreSQL connection string (must include ?sslmode=require)
+DATABASE_URL="postgresql://postgres:[YOUR_PASSWORD]@db.gganvuojpjdwvgtnxoxb.supabase.co:5432/postgres?sslmode=require"
+
+# Your Groq API key
+GROQ_API_KEY="gsk_..."
+
+
+Set up the database:
+
+npx prisma generate
 npx prisma db push
-Ingest Data: (Ensure Analytics_Test_Data.json is in the root /data folder)Bashnpx prisma db seed
-4. Run LocallyStart Backend API: (In apps/api folder)Bashnpm run start  
-Start Frontend: (In apps/web folder)Bashnpm run dev
-The application will be accessible at http://localhost:3000.
+
+
+Seed the database: (Ensure Analytics_Test_Data.json is in the root /data folder)
+
+npx prisma db seed
+
+
+Run the server:
+
+npm run start
+# Server will be running on http://localhost:8080
+
+
+3. Frontend (apps/web)
+
+Navigate to the web folder:
+
+cd apps/web
+
+
+Install dependencies:
+
+npm install
+
+
+Create .env.local file: Create a file named .env.local in the apps/web folder and add the local API URL:
+
+NEXT_PUBLIC_API_BASE_URL="http://localhost:8080"
+
+
+Run the app:
+
+npm run dev
+# App will be running on http://localhost:3000

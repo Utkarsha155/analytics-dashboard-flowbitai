@@ -3,6 +3,7 @@
 import {
   Card,
   CardContent,
+  CardDescription, // Subtitle ke liye
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -13,29 +14,64 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  CartesianGrid, // Background grid ke liye
+  Cell, // <-- FIX 1: Import Cell (Capital 'C')
 } from "recharts";
 import useSWR from "swr";
 
+// --- Fetcher (Jo errors ko handle karta hai) ---
 const fetcher = async (url: string) => {
   const res = await fetch(url);
-
   if (!res.ok) {
-    // --- THIS IS THE FIX ---
-    // We cast 'error' to 'any' to allow adding custom properties
     const error: any = new Error("An error occurred while fetching the data.");
-    // --- END FIX ---
-
     error.info = await res.json();
     error.status = res.status;
     throw error;
   }
-
   return res.json();
 };
-// API se data: [{ name: "Vendor A", total_spend: 5000 }]
+
+// API se data ka type
 type VendorData = {
   name: string;
   total_spend: number;
+};
+
+// --- Currency Formatter (Figma jaisa) ---
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+  }).format(Number(value));
+};
+
+// --- X-Axis Formatter (€0k, €15k...) ---
+const formatAxis = (value: number) => {
+  if (value === 0) return "€0k";
+  return `€${value / 1000}k`;
+};
+
+// --- Custom Tooltip (Screenshot jaisa popup) ---
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-lg border bg-white p-3 shadow-sm">
+        {/* Label (Vendor Name) */}
+        <p className="text-sm font-semibold text-gray-800">{label}</p>
+        {/* Data */}
+        <div className="mt-1 flex items-center justify-between">
+          <span className="text-xs text-gray-500">Vendor Spend:</span>
+          <span
+            className="text-xs font-bold ml-4"
+            style={{ color: "hsl(var(--primary))" }} // Dark Purple
+          >
+            {formatCurrency(payload[0].value)}
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
 };
 
 export function VendorSpendChart() {
@@ -47,24 +83,90 @@ export function VendorSpendChart() {
   if (error) return <div>Failed to load chart</div>;
   if (!data) return <div>Loading...</div>;
 
-  // Recharts ko numbers chahiye, string nahi
-  const chartData = data.map((item) => ({
-    ...item,
-    total_spend: Number(item.total_spend), // Convert string to number
-  }));
+  // Data ko ready karna (Number convert karna)
+  // Aur list ko reverse karna taaki top vendor (AcmeCorp) sabse upar dikhe
+  const chartData = data
+    .map((item) => ({
+      ...item,
+      total_spend: Number(item.total_spend),
+    }))
+    .reverse();
+
+  // X-axis ka max value (e.g., 45k)
+  const maxSpend = Math.max(...chartData.map((d) => d.total_spend));
+  const domainMax = Math.ceil(maxSpend / 15000) * 15000; // 15k ke multiple mein round up
 
   return (
-    <Card>
+    <Card className="bg-white shadow-sm border border-gray-200 rounded-lg">
       <CardHeader>
         <CardTitle>Spend by Vendor (Top 10)</CardTitle>
+        <CardDescription>
+          Vendor spend with cumulative percentage distribution.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} layout="vertical">
-            <XAxis type="number" />
-            <YAxis dataKey="name" type="category" width={100} />
-            <Tooltip />
-            <Bar dataKey="total_spend" fill="#8884d8" name="Total Spend" />
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 5, right: 10, left: 10, bottom: 0 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#e5e7eb"
+              horizontal={false}
+            />
+
+            <XAxis
+              type="number"
+              axisLine={false}
+              tickLine={false}
+              fontSize={12}
+              stroke="#6b7280"
+              tickFormatter={formatAxis}
+              domain={[0, domainMax]}
+              ticks={[0, 15000, 30000, 45000]}
+            />
+
+            <YAxis
+              dataKey="name"
+              type="category"
+              width={100}
+              axisLine={false}
+              tickLine={false}
+              fontSize={12}
+              stroke="#6b7280"
+            />
+
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ fill: "hsl(var(--primary) / 0.1)" }}
+            />
+
+            <Bar
+              dataKey="total_spend"
+              name="Total Spend"
+              radius={[4, 4, 0, 0]}
+              barSize={12}
+              // --- FIX 2: Background ko yahan set karo ---
+              background={{
+                fill: "hsl(var(--primary) / 0.1)", // 10% Purple
+                radius: 4,
+              }}
+            >
+              {/* --- FIX 3: <cell> ko <Cell> (Capital C) karo --- */}
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={
+                    // Figma jaisa effect: "OmegaLtd" ko dark purple, baaki ko light purple
+                    entry.name === "OmegaLtd"
+                      ? "hsl(var(--primary))" // Dark Purple
+                      : "hsl(var(--chart-subtle))" // Lighter Purple (from globals.css)
+                  }
+                />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

@@ -157,75 +157,100 @@ app.get('/cash-outflow', async (req, res) => {
 // ======================================================
 // 🤖 /chat-with-data — AI SQL Assistant
 // ======================================================
+// ======================================================
+// 🤖 /chat-with-data — AI SQL Assistant (Fixed & Stable)
+// ======================================================
 app.post('/chat-with-data', async (req, res) => {
   const { question } = req.body;
 
   try {
+    // 1️⃣ Fetch schema dynamically from DB
     const schema = await prisma.$queryRawUnsafe(`
-      SELECT 
-        table_name, column_name, data_type 
+      SELECT table_name, column_name, data_type 
       FROM information_schema.columns 
       WHERE table_schema = 'public'
       ORDER BY table_name, ordinal_position;
     `);
 
+    // 2️⃣ Create detailed AI prompt
     const prompt = `
 You are an expert PostgreSQL SQL assistant.
 Generate a valid SQL query for the question below using this schema.
+
 ⚠️ Rules:
-- Always use double quotes for tables and columns.
-- For time filters, use CURRENT_DATE - INTERVAL '90 days'.
-- Return only SQL (no text).
+- Always use double quotes for table and column names.
+- Use CURRENT_DATE - INTERVAL '90 days' for recent data filters.
+- Only use SELECT statements.
+- Never include explanations or markdown formatting.
+
 SCHEMA:
 ${JSON.stringify(schema)}
 QUESTION:
 ${question}
 `;
 
+    // 3️⃣ Ask Groq model (updated model)
     const chatCompletion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: GROQ_MODEL,
+      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
       temperature: 0,
     });
 
-    let rawSql = chatCompletion.choices?.[0]?.message?.content?.trim() || '';
-    let sqlQuery = rawSql.replace(/```sql|```/gi, '').replace(/;$/, '').trim();
+    let rawSql = chatCompletion.choices?.[0]?.message?.content?.trim() || "";
 
-    if (!sqlQuery.toLowerCase().startsWith('select')) {
+    // 4️⃣ Clean up SQL output
+    let sqlQuery = rawSql
+      .replace(/```sql|```/gi, "")
+      .replace(/;$/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // 5️⃣ Patch for common column issues
+    sqlQuery = sqlQuery
+      .replace(/invoiceid/gi, '"invoiceId"')
+      .replace(/customerid/gi, '"customerId"')
+      .replace(/vendorid/gi, '"vendorId"');
+
+    if (!sqlQuery.toLowerCase().startsWith("select")) {
       throw new Error(`Invalid SQL generated: ${sqlQuery}`);
     }
 
-    console.log('🧠 Final SQL before execution:', sqlQuery);
+    console.log("🧠 Final SQL before execution:", sqlQuery);
 
+    // 6️⃣ Execute SQL safely
     const results = await prisma.$queryRawUnsafe(sqlQuery);
 
-    let explanation = '';
+    // 7️⃣ Generate short explanation
+    let explanation = "";
     try {
       const explainPrompt = `
-You are a data analyst. Explain this SQL result in one short English sentence.
+Explain this result in one short, user-friendly English sentence.
 Question: ${question}
 SQL: ${sqlQuery}
-Results: ${JSON.stringify(results).slice(0, 400)}
+Results (first few): ${JSON.stringify(results).slice(0, 400)}
 `;
-      const explain = await groq.chat.completions.create({
-        messages: [{ role: 'user', content: explainPrompt }],
-        model: GROQ_MODEL,
+
+      const explainCompletion = await groq.chat.completions.create({
+        model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: explainPrompt }],
         temperature: 0.2,
       });
-      explanation = explain.choices?.[0]?.message?.content?.trim() || '';
+
+      explanation = explainCompletion.choices?.[0]?.message?.content?.trim() || "";
     } catch (expErr) {
-      console.error('⚠️ Explanation generation failed:', expErr);
+      console.error("⚠️ Explanation generation failed:", expErr);
     }
 
+    // ✅ Return all
     res.json({
       sql: sqlQuery,
-      results_json: JSON.stringify(results),
+      results_json: JSON.stringify(results, null, 2),
       explanation,
     });
   } catch (error: any) {
-    console.error('!!! ERROR IN /chat-with-data !!!', error);
+    console.error("!!! ERROR IN /chat-with-data !!!", error);
     res.status(500).json({
-      error: 'AI Processing Failed or invalid SQL.',
+      error: "AI Processing Failed or invalid SQL.",
       details: error.message || error,
     });
   }
