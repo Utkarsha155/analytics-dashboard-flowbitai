@@ -1,41 +1,38 @@
-import 'dotenv/config'; // Loads DB connection string and Groq Key
+import 'dotenv/config'; // Loads .env variables
 
-// --- BigInt FIX: Tells JSON.stringify how to handle large numbers ---
+// --- Fix BigInt serialization for JSON ---
+declare global {
+  interface BigInt {
+    toJSON: () => string;
+  }
+}
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
-// --- END FIX ---
 
-// --- Groq Fix: Use CommonJS require directly ---
 
-import { PrismaClient } from '@prisma/client';
+// --- Imports ---
 import express from 'express';
 import cors from 'cors';
+import { PrismaClient } from '@prisma/client';
+import Groq from 'groq-sdk'; // ✅ Correct Groq SDK import
 
-// Initialize clients
+// --- Initialize clients ---
 const prisma = new PrismaClient();
 const app = express();
 
-// FINAL FIX: Use the simple CJS instantiation now that we know the deployment environment requires it.
-// This is the line that will fix the deployment crash.
-// --- Final Initialization Fix ---
-const GroqWrapper = require('groq'); 
-
-// FIX: This checks if the Groq constructor is the main export or nested under .default
-const GroqClient = GroqWrapper.Groq || GroqWrapper.default || GroqWrapper;
-
-const groq = new GroqClient({
+// ✅ Initialize Groq client properly
+const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
-// --- END FIX ---
 
 // --- Middlewares ---
-app.use(cors()); 
+app.use(cors());
 app.use(express.json());
 
-// --- Core Data Endpoints (Task 1) ---
-
-// 1. GET /stats (Overview Cards)
+// -----------------------------
+// 📊 1. GET /stats (Overview Cards)
+// -----------------------------
 app.get('/stats', async (req, res) => {
   try {
     const totalSpend = await prisma.invoice.aggregate({ _sum: { amount: true } });
@@ -54,7 +51,9 @@ app.get('/stats', async (req, res) => {
   }
 });
 
-// 2. GET /invoice-trends (Line Chart)
+// -----------------------------
+// 📈 2. GET /invoice-trends (Line Chart)
+// -----------------------------
 app.get('/invoice-trends', async (req, res) => {
   try {
     const trends = await prisma.$queryRaw`
@@ -73,7 +72,9 @@ app.get('/invoice-trends', async (req, res) => {
   }
 });
 
-// 3. GET /vendors/top10 (Bar Chart)
+// -----------------------------
+// 🏆 3. GET /vendors/top10 (Bar Chart)
+// -----------------------------
 app.get('/vendors/top10', async (req, res) => {
   try {
     const topVendors = await prisma.$queryRaw`
@@ -93,10 +94,12 @@ app.get('/vendors/top10', async (req, res) => {
   }
 });
 
-// 4. GET /category-spend (Pie Chart)
+// -----------------------------
+// 🥧 4. GET /category-spend (Pie Chart)
+// -----------------------------
 app.get('/category-spend', async (req, res) => {
   try {
-    const accurateCategorySpend = await prisma.$queryRaw`
+    const categorySpend = await prisma.$queryRaw`
       SELECT
         category,
         SUM(price * quantity) as total_spend
@@ -104,14 +107,16 @@ app.get('/category-spend', async (req, res) => {
       GROUP BY category
       ORDER BY total_spend DESC;
     `;
-    res.json(accurateCategorySpend);
+    res.json(categorySpend);
   } catch (error) {
     console.error('!!! ERROR IN /category-spend !!!', error);
     res.status(500).json({ error: 'Failed to fetch category spend' });
   }
 });
 
-// 5. GET /cash-outflow (Bar Chart)
+// -----------------------------
+// 💸 5. GET /cash-outflow (Bar Chart)
+// -----------------------------
 app.get('/cash-outflow', async (req, res) => {
   try {
     const outflow = await prisma.$queryRaw`
@@ -131,12 +136,14 @@ app.get('/cash-outflow', async (req, res) => {
   }
 });
 
-// --- AI Endpoint (Task 2: "Chat with Data") ---
+// -----------------------------
+// 🤖 6. POST /chat-with-data (AI SQL Assistant)
+// -----------------------------
 app.post('/chat-with-data', async (req, res) => {
   const { question } = req.body;
 
   try {
-    // 1. Get Schema (Provide Groq with table structure)
+    // Get schema for AI context
     const schema = await prisma.$queryRaw`
       SELECT 
         table_name, column_name, data_type 
@@ -145,40 +152,43 @@ app.post('/chat-with-data', async (req, res) => {
       ORDER BY table_name, ordinal_position;
     `;
 
-    const prompt = `You are a helpful PostgreSQL SQL assistant. Your task is to generate a PostgreSQL query based on the user's question. The database schema is provided below. Only return the SQL query, nothing else.
-    
-    SCHEMA: ${JSON.stringify(schema)}
-    
-    Question: ${question}`;
+    const prompt = `
+You are a helpful PostgreSQL SQL assistant. 
+Generate a SQL query for the question based on this schema.
+Only return SQL (no explanation).
 
-    // 2. Groq se SQL generate karwao
+SCHEMA: ${JSON.stringify(schema)}
+QUESTION: ${question}
+`;
+
+    // Generate SQL using Groq
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
-      model: 'mixtral-8x7b-32768', 
+      model: 'mixtral-8x7b-32768',
       temperature: 0,
     });
 
-    const rawSql = chatCompletion.choices[0].message.content.trim();
-    // Clean SQL for safe execution
+    const rawSql = chatCompletion.choices[0]?.message?.content?.trim() || '';
     const sqlQuery = rawSql.replace(/```sql|```|;/g, '').trim();
 
-    // 3. Generated SQL query ko database pe run karo
+    // Run the SQL
     const results = await prisma.$queryRawUnsafe(sqlQuery);
 
-    // 4. Frontend ko data wapas bhejo
+    // Send back results
     res.json({
       sql: sqlQuery,
-      results_json: JSON.stringify(results), 
+      results_json: JSON.stringify(results),
     });
-
   } catch (error) {
     console.error('!!! ERROR IN /chat-with-data !!!', error);
-    res.status(500).json({ error: `AI Processing Failed. Check prompt/logs.` });
+    res.status(500).json({ error: 'AI Processing Failed or invalid SQL.' });
   }
 });
 
-// --- Start the Server ---
+// -----------------------------
+// 🚀 Start Server
+// -----------------------------
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`✅ Server is running on port ${PORT}`);
 });

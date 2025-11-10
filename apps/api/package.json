@@ -23,7 +23,7 @@
     "dotenv": "^17.2.3",
     "dotenv-cli": "^11.0.0",
     "express": "^5.1.0",
-    "groq": "^4.14.2",
+    "groq-sdk": "^0.34.0",
     "prisma": "^6.19.0"
   },
   "devDependencies": {
