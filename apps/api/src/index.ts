@@ -1,5 +1,5 @@
 import 'dotenv/config'; // Password loader
-
+import { Groq } from 'groq';
 // --- YEH HAI 'BigInt' FIX (Line 1) ---
 // Poore server ko batata hai ki BigInt ko string mein kaise badalna hai
 (BigInt.prototype as any).toJSON = function () {
@@ -14,6 +14,10 @@ import cors from 'cors';
 // Initialize app & prisma client
 const app = express();
 const prisma = new PrismaClient();
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 // --- Middlewares ---
 app.use(express.json());
@@ -153,13 +157,50 @@ app.get('/cash-outflow', async (req, res) => {
   }
 });
 // 7. POST /chat-with-data (This one is for Phase 4)
+// Endpoint 7. POST /chat-with-data (Final Working Version)
 app.post('/chat-with-data', async (req, res) => {
   const { question } = req.body;
-  res.json({
-    message: "AI endpoint is not connected yet.",
-    sql: "SELECT 'todo'",
-    results: [],
-  });
+
+  try {
+    // --- 1. Schema aur Question ko Groq ke paas bhejo ---
+    const schema = await prisma.$queryRaw`
+      SELECT 
+        table_name, column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      ORDER BY table_name, ordinal_position;
+    `;
+
+    const prompt = `You are a helpful SQL assistant. Your task is to generate a PostgreSQL query based on the user's question. The database schema is provided below. Only return the SQL query, nothing else.
+
+    SCHEMA: ${JSON.stringify(schema)}
+
+    Question: ${question}`;
+
+    // --- 2. Groq se SQL generate karwao ---
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'mixtral-8x7b-32768', 
+      temperature: 0,
+    });
+
+    const rawSql = chatCompletion.choices[0].message.content.trim();
+    // Remove markdown and semicolon
+    const sqlQuery = rawSql.replace(/```sql|```|;/g, '').trim();
+
+    // --- 3. Generated SQL query ko database pe run karo ---
+    const results = await prisma.$queryRawUnsafe(sqlQuery);
+
+    // --- 4. Frontend ko data wapas bhejo ---
+    res.json({
+      sql: sqlQuery,
+      results_json: JSON.stringify(results), // Frontend will parse this
+    });
+
+  } catch (error) {
+    console.error('!!! ERROR IN /chat-with-data !!!', error);
+    res.status(500).json({ error: `AI Processing Failed. Please check the question format.` });
+  }
 });
 
 // --- Start the Server ---

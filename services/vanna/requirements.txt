@@ -1,5 +1,0 @@
-vanna[fastapi,groq,postgres]
-uvicorn
-gunicorn
-psycopg2-binary
-python-dotenv
